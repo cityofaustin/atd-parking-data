@@ -130,4 +130,5 @@ dmypy.json
 
 
 # Custom
+.DS_Store
 env_file
