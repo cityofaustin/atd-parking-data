@@ -1,3 +1,16 @@
+"""Fetch Flowbird meter transactions and load to S3.
+
+One file is generated per day in the provided range and uploaded to S3 at:
+<bucket>/meters/transaction_history/year/month/<query-start-date>.csv
+
+Args:
+    --start: Date (in UTC?) of earliest records to be fetched (YYYY-MM-DD). Defaults to today
+    --end: Date (in UTC?) of the most recent records to be fetched (YYYY-MM-DD). Defaults to today
+    -v/--verbose: Sets the logger level to DEBUG
+
+Usage:
+    $ python txn_history.py --start 2021-11-30 --verbose         
+ """
 import argparse
 from datetime import datetime, timezone, timedelta
 import logging
@@ -45,7 +58,7 @@ def get_todos(start, end):
 
 
 def format_chunk_end(chunk_start):
-    """Add one day to the chunk start date
+    """Add one day to the chunk start date so that it can be used as the query end date
 
     Args:
         chunk_start (str): A start date formatted in the flowbird API query format
@@ -53,7 +66,6 @@ def format_chunk_end(chunk_start):
     Returns:
         str: a date string in the flowbird API query format at 00:00:00 hours the next day
     """
-
     start_date = datetime.strptime(chunk_start, DATE_FORMAT_API) + timedelta(days=1)
     return datetime.strftime(start_date, DATE_FORMAT_API)
 
@@ -76,7 +88,7 @@ def main(start, end):
     s3 = boto3.client("s3")
     todos = get_todos(start, end)
 
-    for i, chunk_start in enumerate(todos):
+    for chunk_start in todos:
         chunk_end = format_chunk_end(chunk_start)
 
         data = {
