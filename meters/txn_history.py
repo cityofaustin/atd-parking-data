@@ -102,11 +102,9 @@ def main(start, end):
         logger.debug(f"Fetching data from {chunk_start} to {chunk_end}")
         res = requests.post(ENDPOINT, data=data)
         res.raise_for_status()
-
         key = format_file_key(chunk_start)
         logger.debug(f"Uploading to s3: {key}")
         s3.put_object(Body=res.text, Bucket=BUCKET, Key=key)
-
         logger.debug(f"Sleeping to comply with rate limit...")
         time.sleep(61)
 
