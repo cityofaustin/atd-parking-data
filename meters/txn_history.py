@@ -12,10 +12,12 @@ Usage:
     $ python txn_history.py --start 2021-11-30 --verbose         
  """
 import argparse
+import csv
 from datetime import datetime, timezone, timedelta
 import logging
 import os
 import time
+from io import StringIO
 
 import boto3
 import requests
@@ -33,7 +35,7 @@ ROOT_DIR = "meters"
 REPORT = "transaction_history"
 DATE_FORMAT_API = "%Y%m%d000000"
 DATE_FORMAT_HUMANS = "%Y-%m-%d"
-
+FORBIDDEN_KEYS = ["PLATE_NUMBER", "CARD_SERIAL_NUMBER"]
 
 def handle_date_args(start_string, end_string):
     """Parse or set default start and end dates from CLI args.
@@ -95,6 +97,52 @@ def format_chunk_end(chunk_start):
     return datetime.strftime(start_date, DATE_FORMAT_API)
 
 
+def csv_string_as_dicts(csv_string):
+    """Parse a CSV string into a list of dicts
+
+    Args:
+        csv_string (str): CSV string data 
+
+    Returns:
+        list: A list of dicts, one per CSV row
+    """
+    with StringIO(csv_string) as fin:
+        reader = csv.DictReader(fin)
+        return [row for row in reader]
+
+def data_to_string(data):
+    """Write a list of dicts as a CSV string
+
+    Args:
+        data (list): A list of dicts, one per CSV row
+
+    Returns:
+        str: The stringified csv data, with a header row
+    """
+    with StringIO() as fout:
+        fieldnames = data[0].keys()
+        writer = csv.DictWriter(fout, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+        return fout.getvalue()
+
+
+def remove_forbidden_keys(data):
+    """Remove forbidden keys from datta
+
+    Args:
+        data (list): A list of dictionaries, one per transactions
+
+    Returns:
+        list: A list of dictionariess, one per transaction, with forbidden keys removed
+    """
+    new_data = []
+    for row in data:
+        new_row = {k: v for k, v in row.items() if k.upper() not in FORBIDDEN_KEYS}
+        new_data.append(new_row)
+    return new_data
+
+
 def format_file_key(chunk_start):
     """Format an S3 file path
 
@@ -114,10 +162,10 @@ def main(args):
     todos = get_todos(start_date, end_date)
 
     s3 = boto3.client("s3")
-    breakpoint()
+
     for chunk_start in todos:
         chunk_end = format_chunk_end(chunk_start)
-
+        # define query params
         data = {
             "startdate": chunk_start,
             "enddate": chunk_end,
@@ -125,13 +173,21 @@ def main(args):
             "login": USER,
             "password": PASSWORD,
         }
-
+        
+        # get data
         logger.debug(f"Fetching data from {chunk_start} to {chunk_end}")
         res = requests.post(ENDPOINT, data=data)
         res.raise_for_status()
+
+        # parse csv and drop forbidden keys
+        data = csv_string_as_dicts(res.text)
+        data = remove_forbidden_keys(data)
+        body = data_to_string(data)
+        
+        # upload to s3
         key = format_file_key(chunk_start)
         logger.debug(f"Uploading to s3: {key}")
-        s3.put_object(Body=res.text, Bucket=BUCKET, Key=key)
+        s3.put_object(Body=body, Bucket=BUCKET, Key=key)
         logger.debug(f"Sleeping to comply with rate limit...")
         time.sleep(61)
 
@@ -166,3 +222,5 @@ if __name__ == "__main__":
     )
 
     main(args)
+
+
