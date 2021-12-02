@@ -4,8 +4,8 @@ One file is generated per day in the provided range and uploaded to S3 at:
 <bucket>/meters/transaction_history/year/month/<query-start-date>.csv
 
 Args:
-    --start: Date (in UTC?) of earliest records to be fetched (YYYY-MM-DD). Defaults to today
-    --end: Date (in UTC?) of the most recent records to be fetched (YYYY-MM-DD). Defaults to today
+    --start: Date (in UTC) of earliest records to be fetched (YYYY-MM-DD). Defaults to yesterday
+    --end: Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to yesterday
     -v/--verbose: Sets the logger level to DEBUG
 
 Usage:
@@ -35,20 +35,45 @@ DATE_FORMAT_API = "%Y%m%d000000"
 DATE_FORMAT_HUMANS = "%Y-%m-%d"
 
 
-def get_todos(start, end):
+def handle_date_args(start_string, end_string):
+    """Parse or set default start and end dates from CLI args.
+
+    Args:
+        start_string (string): Date (in UTC) of earliest records to be fetched (YYYY-MM-DD).
+            Defaults to yesterday.
+        end_string (string): Date (in UTC) of most recent records to be fetched (YYYY-MM-DD).
+            Defaults to yesterday.
+
+    Returns:
+        list: The start date and end date as python datetime objects
+    """
+    if start_string:
+        # parse CLI arg date
+        start_date = datetime.strptime(start_string, DATE_FORMAT_HUMANS).replace(tzinfo=timezone.utc)
+    else:
+        # create yesterday's date
+        start_date = datetime.now(timezone.utc) - timedelta(days=1)
+
+    if end_string:
+        end_date = datetime.strptime(end_string, DATE_FORMAT_HUMANS).replace(tzinfo=timezone.utc)
+    else:
+        end_date = datetime.now(timezone.utc) - timedelta(days=1)
+
+    return start_date, end_date
+
+
+def get_todos(start_date, end_date):
     """Generate a list of dates to be fetched.
 
     Args:
-        start (str): The earliest day to process in format YYYY-MM-DD
-        end (str): The last day to process in format YYYY-MM-DD
+        start (datetime.datetime): The earliest day to process
+        end (datetime.datetime): The last day to process
     Returns:
       list: a list of flowbird-API-friendly date strings that fall within (and including)
         the given given start/end
     """
-    # parse input dates into actual python datetime objs
-    start_date = datetime.strptime(start, DATE_FORMAT_HUMANS)
     # adjust end date to midnight the next day
-    end_date = datetime.strptime(end, DATE_FORMAT_HUMANS) + timedelta(days=1)
+    end_date = end_date + timedelta(days=1)
     # calculate the # of days between start and end
     delta = end_date - start_date
     # generate a list of datetime objs within the the delta
@@ -84,10 +109,12 @@ def format_file_key(chunk_start):
     return f"{ROOT_DIR}/{REPORT}/{file_date.year}/{file_date.month}/{chunk_start}.csv"
 
 
-def main(start, end):
-    s3 = boto3.client("s3")
-    todos = get_todos(start, end)
+def main(args):
+    start_date, end_date = handle_date_args(args.start, args.end)
+    todos = get_todos(start_date, end_date)
 
+    s3 = boto3.client("s3")
+    breakpoint()
     for chunk_start in todos:
         chunk_end = format_chunk_end(chunk_start)
 
@@ -115,15 +142,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--start",
         type=str,
-        default=datetime.now(timezone.utc).strftime(DATE_FORMAT_HUMANS),
-        help=f"Date (in UTC) of earliest records to be fetched (YYYY-MM-DD). Defaults to today",
+        help=f"Date (in UTC) of earliest records to be fetched (YYYY-MM-DD). Defaults to yesterday",
     )
 
     parser.add_argument(
         "--end",
         type=str,
-        default=datetime.now(timezone.utc).strftime(DATE_FORMAT_HUMANS),
-        help=f"Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to today",
+        help=f"Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to yesterday",
     )
 
     parser.add_argument(
@@ -140,4 +165,4 @@ if __name__ == "__main__":
         level=logging.DEBUG if args.verbose else logging.INFO,
     )
 
-    main(args.start, args.end)
+    main(args)

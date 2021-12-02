@@ -27,6 +27,12 @@ Fetch/upload UTC yesterday's transactions
 $ python txn_history.py --verbose
 ```
 
+Fetch/upload transactions for Oct 1, 2021
+
+```shell
+$ python txn_history.py --start 2021-10-01 --end 2021-10-01 --verbose
+```
+
 Fetch/upload all transactions from October 2021, inclusive of start and end dates
 
 ```shell
