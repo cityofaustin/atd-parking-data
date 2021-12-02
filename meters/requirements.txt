@@ -1,0 +1,4 @@
+boto3==1.19.*
+requests==2.26.*
+sodapy==2.1.*
+python-dateutil==2.8.*
