@@ -12,7 +12,8 @@ One file is generated per day in the provided range and uploaded to S3 at: `<buc
 - `PASSWORD`: Dr-Direct password
 - `ENDPOINT`: Dr-Direct service endpoint
 - `BUCKET`: S3 bucket name
-
+- `AWS_ACCESS_KEY_ID`: AWS access key with write permissions on bucket
+- `AWS_SECRET_ACCESS_KEY`: AWS access key secret
 
 ### CLI Arguments:
 -  `--start`: Date (in UTC) of earliest records to be fetched in format `YYYY-MM-DD`. Defaults to yesterday.
