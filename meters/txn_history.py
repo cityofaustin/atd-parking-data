@@ -1,16 +1,4 @@
-"""Fetch Flowbird meter transactions and load to S3.
-
-One file is generated per day in the provided range and uploaded to S3 at:
-<bucket>/meters/transaction_history/year/month/<query-start-date>.csv
-
-Args:
-    --start: Date (in UTC) of earliest records to be fetched (YYYY-MM-DD). Defaults to yesterday
-    --end: Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to yesterday
-    -v/--verbose: Sets the logger level to DEBUG
-
-Usage:
-    $ python txn_history.py --start 2021-11-30 --verbose         
- """
+"""Fetch Flowbird meter transactions and load to S3"""
 import argparse
 import csv
 from datetime import datetime, timezone, timedelta
@@ -143,7 +131,7 @@ def remove_forbidden_keys(data):
     return new_data
 
 
-def format_file_key(chunk_start):
+def format_file_key(chunk_start, env):
     """Format an S3 file path
 
     Args:
@@ -154,7 +142,7 @@ def format_file_key(chunk_start):
           meters/transaction_history/year/month/<query-string>.csv
     """
     file_date = datetime.strptime(chunk_start, DATE_FORMAT_API)
-    return f"{ROOT_DIR}/{REPORT}/{file_date.year}/{file_date.month}/{chunk_start}.csv"
+    return f"{ROOT_DIR}/{env}/{REPORT}/{file_date.year}/{file_date.month}/{chunk_start}.csv"
 
 
 def main(args):
@@ -185,7 +173,7 @@ def main(args):
         body = data_to_string(data)
         
         # upload to s3
-        key = format_file_key(chunk_start)
+        key = format_file_key(chunk_start, args.env)
         logger.debug(f"Uploading to s3: {key}")
         s3.put_object(Body=body, Bucket=BUCKET, Key=key)
         logger.debug(f"Sleeping to comply with rate limit...")
@@ -205,6 +193,14 @@ if __name__ == "__main__":
         "--end",
         type=str,
         help=f"Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to yesterday",
+    )
+
+    parser.add_argument(
+        "-e",
+        "--env",
+        default="dev",
+        choices=["dev", "prod"],
+        help=f"The environment",
     )
 
     parser.add_argument(
