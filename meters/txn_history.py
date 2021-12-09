@@ -25,6 +25,9 @@ DATE_FORMAT_API = "%Y%m%d000000"
 DATE_FORMAT_HUMANS = "%Y-%m-%d"
 FORBIDDEN_KEYS = ["PLATE_NUMBER", "CARD_SERIAL_NUMBER"]
 
+# hack to validate response
+HEADER_ROW_LENGTH = 396
+
 def handle_date_args(start_string, end_string):
     """Parse or set default start and end dates from CLI args.
 
@@ -32,7 +35,7 @@ def handle_date_args(start_string, end_string):
         start_string (string): Date (in UTC) of earliest records to be fetched (YYYY-MM-DD).
             Defaults to yesterday.
         end_string (string): Date (in UTC) of most recent records to be fetched (YYYY-MM-DD).
-            Defaults to yesterday.
+            Defaults to today.
 
     Returns:
         list: The start date and end date as python datetime objects
@@ -45,9 +48,11 @@ def handle_date_args(start_string, end_string):
         start_date = datetime.now(timezone.utc) - timedelta(days=1)
 
     if end_string:
+        # parse CLI arg date
         end_date = datetime.strptime(end_string, DATE_FORMAT_HUMANS).replace(tzinfo=timezone.utc)
     else:
-        end_date = datetime.now(timezone.utc) - timedelta(days=1)
+        # create today's date
+        end_date = datetime.now(timezone.utc)
 
     return start_date, end_date
 
@@ -167,8 +172,19 @@ def main(args):
         res = requests.post(ENDPOINT, data=data)
         res.raise_for_status()
 
-        # parse csv and drop forbidden keys
+        try:
+            # the endpoint always returns status 200, even when access is denied, rate
+            # limit error, etc :/
+            # so let's make sure we have at least as much text as the header row
+            assert(len(res.text) >= HEADER_ROW_LENGTH)
+        except AssertionError:
+            raise ValueError(f"Invalid data returned from flowbird endpoint: {res.text}")
+        
         data = csv_string_as_dicts(res.text)
+        
+        if not data:
+            raise ValueError("No data returned from flowbird endpoint")
+
         data = remove_forbidden_keys(data)
         body = data_to_string(data)
         
@@ -192,7 +208,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--end",
         type=str,
-        help=f"Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to yesterday",
+        help=f"Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to today",
     )
 
     parser.add_argument(
