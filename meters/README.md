@@ -5,7 +5,7 @@ Scripts for processing parking meter transactions from the Flowbird DR-Direct to
 
 Fetch Flowbird meter transactions and load to S3. This processes the "txn_history" report from the Flowbird Dr-Direct tool.
 
-One file is generated per day in the provided range and uploaded to S3 at: `<bucket-name>/meters/transaction_history/year/month/<query-start-date>.csv`
+One file is generated per day in the provided range and uploaded to S3 at: `<bucket-name>/meters/<enviornment>/transaction_history/year/month/<query-start-date>.csv`
 
 ### Environmental variables
 - `USER`: Dr-direct username
@@ -18,6 +18,7 @@ One file is generated per day in the provided range and uploaded to S3 at: `<buc
 ### CLI Arguments:
 -  `--start`: Date (in UTC) of earliest records to be fetched in format `YYYY-MM-DD`. Defaults to yesterday.
 - `--end`: Date (in UTC) of the most recent records to be fetched in format `YYYY-MM-DD`. Defaults to yesterday.
+- `-e/--env`: The runtime environment. `dev` or `prod`. This value applies to the S3 Object key of the uploaded file.
 - `-v/--verbose`: Sets the logger level to DEBUG
 
 ### Usage:
