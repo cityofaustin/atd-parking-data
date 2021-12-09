@@ -17,7 +17,7 @@ One file is generated per day in the provided range and uploaded to S3 at: `<buc
 
 ### CLI Arguments:
 -  `--start`: Date (in UTC) of earliest records to be fetched in format `YYYY-MM-DD`. Defaults to yesterday.
-- `--end`: Date (in UTC) of the most recent records to be fetched in format `YYYY-MM-DD`. Defaults to yesterday.
+- `--end`: Date (in UTC) of the most recent records to be fetched in format `YYYY-MM-DD`. Defaults to today.
 - `-e/--env`: The runtime environment. `dev` or `prod`. This value applies to the S3 Object key of the uploaded file.
 - `-v/--verbose`: Sets the logger level to DEBUG
 
