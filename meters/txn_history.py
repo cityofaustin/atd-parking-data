@@ -121,13 +121,13 @@ def data_to_string(data):
 
 
 def remove_forbidden_keys(data):
-    """Remove forbidden keys from datta
+    """Remove forbidden keys from data
 
     Args:
         data (list): A list of dictionaries, one per transactions
 
     Returns:
-        list: A list of dictionariess, one per transaction, with forbidden keys removed
+        list: A list of dictionaries, one per transaction, with forbidden keys removed
     """
     new_data = []
     for row in data:
