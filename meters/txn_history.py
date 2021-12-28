@@ -20,13 +20,12 @@ BUCKET = os.getenv("BUCKET")
 
 # settings
 ROOT_DIR = "meters"
-REPORT = "transaction_history"
 DATE_FORMAT_API = "%Y%m%d000000"
 DATE_FORMAT_HUMANS = "%Y-%m-%d"
-FORBIDDEN_KEYS = ["PLATE_NUMBER", "CARD_SERIAL_NUMBER"]
 
 # hack to validate response
 HEADER_ROW_LENGTH = 396
+
 
 def handle_date_args(start_string, end_string):
     """Parse or set default start and end dates from CLI args.
@@ -42,14 +41,18 @@ def handle_date_args(start_string, end_string):
     """
     if start_string:
         # parse CLI arg date
-        start_date = datetime.strptime(start_string, DATE_FORMAT_HUMANS).replace(tzinfo=timezone.utc)
+        start_date = datetime.strptime(start_string, DATE_FORMAT_HUMANS).replace(
+            tzinfo=timezone.utc
+        )
     else:
         # create yesterday's date
         start_date = datetime.now(timezone.utc) - timedelta(days=1)
 
     if end_string:
         # parse CLI arg date
-        end_date = datetime.strptime(end_string, DATE_FORMAT_HUMANS).replace(tzinfo=timezone.utc)
+        end_date = datetime.strptime(end_string, DATE_FORMAT_HUMANS).replace(
+            tzinfo=timezone.utc
+        )
     else:
         # create today's date
         end_date = datetime.now(timezone.utc)
@@ -103,6 +106,7 @@ def csv_string_as_dicts(csv_string):
         reader = csv.DictReader(fin)
         return [row for row in reader]
 
+
 def data_to_string(data):
     """Write a list of dicts as a CSV string
 
@@ -120,7 +124,7 @@ def data_to_string(data):
         return fout.getvalue()
 
 
-def remove_forbidden_keys(data):
+def remove_forbidden_keys(data, report):
     """Remove forbidden keys from data
 
     Args:
@@ -129,14 +133,21 @@ def remove_forbidden_keys(data):
     Returns:
         list: A list of dictionaries, one per transaction, with forbidden keys removed
     """
+
+    # There are different forbidden keys based on the report requested
+    if report == "transaction_history":
+        forbidden_keys = ["PLATE_NUMBER", "CARD_SERIAL_NUMBER"]
+    else:
+        forbidden_keys = ["PAN_HIDDEN"]
+
     new_data = []
     for row in data:
-        new_row = {k: v for k, v in row.items() if k.upper() not in FORBIDDEN_KEYS}
+        new_row = {k: v for k, v in row.items() if k.upper() not in forbidden_keys}
         new_data.append(new_row)
     return new_data
 
 
-def format_file_key(chunk_start, env):
+def format_file_key(chunk_start, env, report):
     """Format an S3 file path
 
     Args:
@@ -147,26 +158,42 @@ def format_file_key(chunk_start, env):
           meters/transaction_history/year/month/<query-string>.csv
     """
     file_date = datetime.strptime(chunk_start, DATE_FORMAT_API)
-    return f"{ROOT_DIR}/{env}/{REPORT}/{file_date.year}/{file_date.month}/{chunk_start}.csv"
+    return f"{ROOT_DIR}/{env}/{report}/{file_date.year}/{file_date.month}/{chunk_start}.csv"
 
 
 def main(args):
     start_date, end_date = handle_date_args(args.start, args.end)
     todos = get_todos(start_date, end_date)
 
+    # Argument decides which table to get from the API, transactions or credit card payments
+    if args.report == "transactions":
+        report = "transaction_history"
+    else:
+        report = "archipel_transactionspub"
+
     s3 = boto3.client("s3")
 
     for chunk_start in todos:
         chunk_end = format_chunk_end(chunk_start)
         # define query params
-        data = {
-            "startdate": chunk_start,
-            "enddate": chunk_end,
-            "report": REPORT,
-            "login": USER,
-            "password": PASSWORD,
-        }
-        
+        # Different query params for the two types of tables
+        if report == "transaction_history":
+            data = {
+                "startdate": chunk_start,
+                "enddate": chunk_end,
+                "report": report,
+                "login": USER,
+                "password": PASSWORD,
+            }
+        else:
+            data = {
+                "startdatetime": chunk_start,
+                "enddatetime": chunk_end,
+                "report": report,
+                "login": USER,
+                "password": PASSWORD,
+            }
+
         # get data
         logger.debug(f"Fetching data from {chunk_start} to {chunk_end}")
         res = requests.post(ENDPOINT, data=data)
@@ -176,20 +203,22 @@ def main(args):
             # the endpoint always returns status 200, even when access is denied, rate
             # limit error, etc :/
             # so let's make sure we have at least as much text as the header row
-            assert(len(res.text) >= HEADER_ROW_LENGTH)
+            assert len(res.text) >= HEADER_ROW_LENGTH
         except AssertionError:
-            raise ValueError(f"Invalid data returned from flowbird endpoint: {res.text}")
-        
+            raise ValueError(
+                f"Invalid data returned from flowbird endpoint: {res.text}"
+            )
+
         data = csv_string_as_dicts(res.text)
-        
+
         if not data:
             raise ValueError("No data returned from flowbird endpoint")
 
-        data = remove_forbidden_keys(data)
+        data = remove_forbidden_keys(data, report)
         body = data_to_string(data)
-        
+
         # upload to s3
-        key = format_file_key(chunk_start, args.env)
+        key = format_file_key(chunk_start, args.env, report)
         logger.debug(f"Uploading to s3: {key}")
         s3.put_object(Body=body, Bucket=BUCKET, Key=key)
         logger.debug(f"Sleeping to comply with rate limit...")
@@ -212,27 +241,24 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-e",
-        "--env",
-        default="dev",
-        choices=["dev", "prod"],
-        help=f"The environment",
+        "--report",
+        default="transactions",
+        choices=["transactions", "payments"],
+        help=f"The type of report to collect (transactions, payments)",
     )
 
     parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help=f"Sets logger to DEBUG level",
+        "-e", "--env", default="dev", choices=["dev", "prod"], help=f"The environment",
+    )
+
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help=f"Sets logger to DEBUG level",
     )
 
     args = parser.parse_args()
 
     logger = utils.get_logger(
-        __file__,
-        level=logging.DEBUG if args.verbose else logging.INFO,
+        __file__, level=logging.DEBUG if args.verbose else logging.INFO,
     )
 
     main(args)
-
-
