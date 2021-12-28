@@ -2,7 +2,7 @@
 
 Three daily emails are scheduled to arrive at a S3 email address with processed credit card payments data for Austin's parking transactions. 
 
-This script takes the email which is stored in S3 and pulls out the attachment CSVs and places them in a separate folder.
+fiserv_email_pub.py takes the emails which are stored in S3 and parses out the attachment CSVs and places them in a separate folder.
 
 ## S3 Folder layout:
 ```
