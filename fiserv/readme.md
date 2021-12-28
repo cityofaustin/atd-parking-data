@@ -10,3 +10,7 @@ fiserv_email_pub.py takes the emails which are stored in S3 and parses out the a
 	-> processed (processed csv files placed here)
 	-> archive (old emails are moved to here)
    ```
+
+## Local Parking DB
+
+fiserv_DB.py combines the daily CSV reports in S3 and upserts to a local postgres DB schema defined as fiserv_reports_raw.
