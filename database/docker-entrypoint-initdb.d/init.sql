@@ -49,46 +49,70 @@ CREATE TABLE api.transactions (
   "duration_min" int,
   "start_time" timestamp,
   "end_time" timestamp,
-  "amount" money,
+  "amount" real,
   "meter_id" int,
   "payment_method" text
 );
 
 CREATE TABLE api.flowbird_transactions_raw (
-  "id" int PRIMARY KEY,
-  "invoice_id" bigint UNIQUE,
+  "id" bigint PRIMARY KEY,
+  "invoice_id" bigint,
   "payment_method" text,
   "meter_id" int,
+  "transaction_type" text,
   "timestamp" timestamp,
-  "duration_min" int,
+  "duration_min" real,
   "start_time" timestamp,
   "end_time" timestamp,
-  "amount" money
+  "amount" real,
+  "validated" bool
+);
+
+CREATE TABLE api.flowbird_payments_raw (
+  "invoice_id" bigint PRIMARY KEY,
+  "card_type" text,
+  "meter_id" int,
+  "transaction_type" text,
+  "transaction_date" timestamp,
+  "transaction_status" text,
+  "remittance_status" text,
+  "processed_date" timestamp,
+  "amount" real
 );
 
 CREATE TABLE api.flowbird_HUB_transactions_raw (
-  "id" int PRIMARY KEY,
+  "id" bigint PRIMARY KEY,
   "payment_method" text,
   "meter_id" int,
   "timestamp" timestamp,
-  "duration_min" int,
+  "duration_min" real,
   "start_time" timestamp,
   "end_time" timestamp,
-  "amount" money,
-  "invoice_id" bigint UNIQUE
+  "amount" real,
+  "invoice_id" bigint,
+  "validated" bool
 );
 
 CREATE TABLE api.passport_transactions_raw (
   "id" int PRIMARY KEY,
   "payment_method" text,
   "timestamp" timestamp,
-  "amount" money
+  "amount" real
 );
 
 CREATE TABLE api.fiserv_reports_raw (
   "invoice_id" bigint PRIMARY KEY,
-  "timestamp" timestamp,
-  "amount" money
+  "account" int,
+  "transaction_date" timestamp,
+  "transaction_type" text,
+  "meter_id" int,
+  "batch_number" bigint,
+  "batch_sequence_number" bigint,
+  "submit_date" timestamp,
+  "funded_date" timestamp,
+  "transaction_status" text,
+  "validated" bool,
+  "amount" real
 );
 
 CREATE TABLE api.validated_flowbird_transactions (
@@ -100,7 +124,7 @@ CREATE TABLE api.validated_flowbird_transactions (
   "duration_min" int,
   "start_time" timestamp,
   "end_time" timestamp,
-  "amount" money
+  "amount" real
 );
 
 CREATE TABLE api.not_validated_flowbird_transactions (
@@ -112,7 +136,7 @@ CREATE TABLE api.not_validated_flowbird_transactions (
   "duration_min" int,
   "start_time" timestamp,
   "end_time" timestamp,
-  "amount" money
+  "amount" real
 );
 
 
@@ -146,7 +170,7 @@ GRANT ALL ON TABLE api.passport_transactions_raw TO my_api_user;
 GRANT ALL ON TABLE api.fiserv_reports_raw TO my_api_user;
 GRANT ALL ON TABLE api.not_validated_flowbird_transactions TO my_api_user;
 GRANT ALL ON TABLE api.validated_flowbird_transactions TO my_api_user;
-
+GRANT ALL ON TABLE api.flowbird_payments_raw TO my_api_user;
 
 
 --
