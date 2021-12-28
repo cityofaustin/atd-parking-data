@@ -26,6 +26,7 @@ DATE_FORMAT_HUMANS = "%Y-%m-%d"
 # hack to validate response
 HEADER_ROW_LENGTH = 396
 
+
 def handle_date_args(start_string, end_string):
     """Parse or set default start and end dates from CLI args.
 
@@ -40,14 +41,18 @@ def handle_date_args(start_string, end_string):
     """
     if start_string:
         # parse CLI arg date
-        start_date = datetime.strptime(start_string, DATE_FORMAT_HUMANS).replace(tzinfo=timezone.utc)
+        start_date = datetime.strptime(start_string, DATE_FORMAT_HUMANS).replace(
+            tzinfo=timezone.utc
+        )
     else:
         # create yesterday's date
         start_date = datetime.now(timezone.utc) - timedelta(days=1)
 
     if end_string:
         # parse CLI arg date
-        end_date = datetime.strptime(end_string, DATE_FORMAT_HUMANS).replace(tzinfo=timezone.utc)
+        end_date = datetime.strptime(end_string, DATE_FORMAT_HUMANS).replace(
+            tzinfo=timezone.utc
+        )
     else:
         # create today's date
         end_date = datetime.now(timezone.utc)
@@ -101,6 +106,7 @@ def csv_string_as_dicts(csv_string):
         reader = csv.DictReader(fin)
         return [row for row in reader]
 
+
 def data_to_string(data):
     """Write a list of dicts as a CSV string
 
@@ -118,7 +124,7 @@ def data_to_string(data):
         return fout.getvalue()
 
 
-def remove_forbidden_keys(data,report):
+def remove_forbidden_keys(data, report):
     """Remove forbidden keys from datta
 
     Args:
@@ -187,7 +193,7 @@ def main(args):
                 "login": USER,
                 "password": PASSWORD,
             }
-        
+
         # get data
         logger.debug(f"Fetching data from {chunk_start} to {chunk_end}")
         res = requests.post(ENDPOINT, data=data)
@@ -197,18 +203,20 @@ def main(args):
             # the endpoint always returns status 200, even when access is denied, rate
             # limit error, etc :/
             # so let's make sure we have at least as much text as the header row
-            assert(len(res.text) >= HEADER_ROW_LENGTH)
+            assert len(res.text) >= HEADER_ROW_LENGTH
         except AssertionError:
-            raise ValueError(f"Invalid data returned from flowbird endpoint: {res.text}")
-        
+            raise ValueError(
+                f"Invalid data returned from flowbird endpoint: {res.text}"
+            )
+
         data = csv_string_as_dicts(res.text)
-        
+
         if not data:
             raise ValueError("No data returned from flowbird endpoint")
 
         data = remove_forbidden_keys(data, report)
         body = data_to_string(data)
-        
+
         # upload to s3
         key = format_file_key(chunk_start, args.env, report)
         logger.debug(f"Uploading to s3: {key}")
@@ -235,31 +243,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--report",
         default="transactions",
-        choices = ["transactions", "payments"],
+        choices=["transactions", "payments"],
         help=f"The type of report to collect (transactions, payments)",
     )
 
     parser.add_argument(
-        "-e",
-        "--env",
-        default="dev",
-        choices=["dev", "prod"],
-        help=f"The environment",
+        "-e", "--env", default="dev", choices=["dev", "prod"], help=f"The environment",
     )
 
     parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help=f"Sets logger to DEBUG level",
+        "-v", "--verbose", action="store_true", help=f"Sets logger to DEBUG level",
     )
 
     args = parser.parse_args()
 
     logger = utils.get_logger(
-        __file__,
-        level=logging.DEBUG if args.verbose else logging.INFO,
+        __file__, level=logging.DEBUG if args.verbose else logging.INFO,
     )
 
     main(args)
-
