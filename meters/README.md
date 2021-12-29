@@ -58,3 +58,8 @@ Here's a sample command to run the transaction history upload with an environmen
 ```bash
 docker run --rm -it --env-file env_file atddocker/atd-parking-data-meters python txn_history.py -v --start 2021-12-08 --end 2021-12-09
 ```
+
+
+## smartfolio_s3.py
+
+This script takes the CSVs extracted from DR-Direct (which are stored in an S3 bucket) and stores them locally in a postgres database.
