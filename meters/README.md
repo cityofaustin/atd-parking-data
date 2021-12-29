@@ -30,6 +30,12 @@ Fetch/upload UTC yesterday's transactions
 $ python txn_history.py --verbose
 ```
 
+Fetch/upload yesterday's payment report
+
+```shell
+$ python txn_history.py --verbose --report payments
+```
+
 Fetch/upload transactions for Oct 1, 2021
 
 ```shell
