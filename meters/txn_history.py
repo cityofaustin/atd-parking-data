@@ -212,7 +212,6 @@ def main(args):
         data = csv_string_as_dicts(res.text)
 
         if data:
-            raise ValueError("No data returned from flowbird endpoint")
 
             data = remove_forbidden_keys(data, report)
             body = data_to_string(data)
