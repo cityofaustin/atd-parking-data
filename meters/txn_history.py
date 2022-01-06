@@ -211,18 +211,20 @@ def main(args):
 
         data = csv_string_as_dicts(res.text)
 
-        if not data:
+        if data:
             raise ValueError("No data returned from flowbird endpoint")
 
-        data = remove_forbidden_keys(data, report)
-        body = data_to_string(data)
+            data = remove_forbidden_keys(data, report)
+            body = data_to_string(data)
 
-        # upload to s3
-        key = format_file_key(chunk_start, args.env, report)
-        logger.debug(f"Uploading to s3: {key}")
-        s3.put_object(Body=body, Bucket=BUCKET, Key=key)
-        logger.debug(f"Sleeping to comply with rate limit...")
-        time.sleep(61)
+            # upload to s3
+            key = format_file_key(chunk_start, args.env, report)
+            logger.debug(f"Uploading to s3: {key}")
+            s3.put_object(Body=body, Bucket=BUCKET, Key=key)
+            logger.debug(f"Sleeping to comply with rate limit...")
+            time.sleep(61)
+        else:
+            logger.debug(f"No data found for {chunk_start} to {chunk_end}")
 
 
 if __name__ == "__main__":
