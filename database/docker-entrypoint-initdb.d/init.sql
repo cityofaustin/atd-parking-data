@@ -39,19 +39,36 @@ ALTER SCHEMA api OWNER TO postgres;
 
 
 
+
+
 --
 -- Name: trigger_set_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
 --
+
+CREATE FUNCTION public.trigger_set_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$;
+
+
+ALTER FUNCTION public.trigger_set_updated_at() OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+
 CREATE TABLE api.transactions (
   "id" int PRIMARY KEY,
-  "transaction_id" int,
-  "timestamp" timestamp,
-  "duration_min" int,
+  "source" text,
+  "duration_min" real,
   "start_time" timestamp,
   "end_time" timestamp,
   "amount" real,
   "meter_id" int,
-  "payment_method" text
+  "zone_id" int,
+  "zone_group" text,
+  "payment_method" text,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE api.flowbird_transactions_raw (
@@ -65,7 +82,7 @@ CREATE TABLE api.flowbird_transactions_raw (
   "start_time" timestamp,
   "end_time" timestamp,
   "amount" real,
-  "validated" bool
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE api.flowbird_payments_raw (
@@ -77,7 +94,8 @@ CREATE TABLE api.flowbird_payments_raw (
   "transaction_status" text,
   "remittance_status" text,
   "processed_date" timestamp,
-  "amount" real
+  "amount" real,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE api.flowbird_HUB_transactions_raw (
@@ -90,14 +108,21 @@ CREATE TABLE api.flowbird_HUB_transactions_raw (
   "end_time" timestamp,
   "amount" real,
   "invoice_id" bigint,
-  "validated" bool
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE api.passport_transactions_raw (
   "id" int PRIMARY KEY,
+  "zone_id" int,
+  "zone_group" text,
+  "start_time" timestamp,
+  "end_time" timestamp,
+  "duration_min" real,
   "payment_method" text,
-  "timestamp" timestamp,
-  "amount" real
+  "amount" real,
+  "net_revenue" real,
+  "source" text,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE api.fiserv_reports_raw (
@@ -111,34 +136,16 @@ CREATE TABLE api.fiserv_reports_raw (
   "submit_date" timestamp,
   "funded_date" timestamp,
   "transaction_status" text,
-  "validated" bool,
-  "amount" real
+  "amount" real,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE api.validated_flowbird_transactions (
-  "id" int PRIMARY KEY,
-  "invoice_id" bigint REFERENCES api.fiserv_reports_raw ("invoice_id"),
-  "payment_method" text,
-  "meter_id" int,
-  "timestamp" timestamp,
-  "duration_min" int,
-  "start_time" timestamp,
-  "end_time" timestamp,
-  "amount" real
-);
-
-CREATE TABLE api.not_validated_flowbird_transactions (
-  "id" int PRIMARY KEY,
-  "invoice_id" bigint,
-  "payment_method" text,
-  "meter_id" int,
-  "timestamp" timestamp,
-  "duration_min" int,
-  "start_time" timestamp,
-  "end_time" timestamp,
-  "amount" real
-);
-
+CREATE TRIGGER set_updated_at BEFORE INSERT OR UPDATE ON api.transactions FOR EACH ROW EXECUTE FUNCTION public.trigger_set_updated_at();
+CREATE TRIGGER set_updated_at BEFORE INSERT OR UPDATE ON api.flowbird_transactions_raw FOR EACH ROW EXECUTE FUNCTION public.trigger_set_updated_at();
+CREATE TRIGGER set_updated_at BEFORE INSERT OR UPDATE ON api.flowbird_HUB_transactions_raw FOR EACH ROW EXECUTE FUNCTION public.trigger_set_updated_at();
+CREATE TRIGGER set_updated_at BEFORE INSERT OR UPDATE ON api.passport_transactions_raw FOR EACH ROW EXECUTE FUNCTION public.trigger_set_updated_at();
+CREATE TRIGGER set_updated_at BEFORE INSERT OR UPDATE ON api.fiserv_reports_raw FOR EACH ROW EXECUTE FUNCTION public.trigger_set_updated_at();
+CREATE TRIGGER set_updated_at BEFORE INSERT OR UPDATE ON api.flowbird_payments_raw FOR EACH ROW EXECUTE FUNCTION public.trigger_set_updated_at();
 
 
 --
@@ -168,8 +175,6 @@ GRANT ALL ON TABLE api.flowbird_transactions_raw TO my_api_user;
 GRANT ALL ON TABLE api.flowbird_HUB_transactions_raw TO my_api_user;
 GRANT ALL ON TABLE api.passport_transactions_raw TO my_api_user;
 GRANT ALL ON TABLE api.fiserv_reports_raw TO my_api_user;
-GRANT ALL ON TABLE api.not_validated_flowbird_transactions TO my_api_user;
-GRANT ALL ON TABLE api.validated_flowbird_transactions TO my_api_user;
 GRANT ALL ON TABLE api.flowbird_payments_raw TO my_api_user;
 
 
