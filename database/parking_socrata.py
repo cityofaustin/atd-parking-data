@@ -30,8 +30,15 @@ TXNS_DATASET = os.environ.get("TXNS_DATASET")
 
 
 def tzcleanup(data):
-
-    # Truncate the updated_at field timestamp to remove the timezone info for Socrata
+    """Removes timezone from a postgres datetime field for upload to socrata.
+        Socrata data type is a floating timestamp which does not include timezone.
+    
+    Args:
+        Data (list of dicts): Data response from postgres.
+    
+    Returns:
+        Data (list of dicts): The response with the updated_at column without timezone info/
+    """
     for row in data:
         row["updated_at"] = row["updated_at"][:19]
     return data
@@ -71,7 +78,16 @@ def handle_date_args(start_string, end_string):
 
 
 def fiserv(start, end, pstgrs, soda):
-    ## Fiserv reports upsert to socrata
+    """Queries the postgres database for Fiserv data and sends the response to Socrata.
+    
+    Args:
+        start (string): Inclusive date (UTC) of earliest records to be uploaded
+        end (string): Inclusive date (UTC) of latest records to be uploaded
+        postgrest and sodapy client objects
+    
+    Returns:
+        none
+    """
     logger.debug(f"Publishing Fiserv data to Socrata from {start} to {end}")
 
     params = {
@@ -88,7 +104,17 @@ def fiserv(start, end, pstgrs, soda):
 
 
 def meters(start, end, pstgrs, soda):
-    ## Flowbird transactions upsert to socrata
+    """Queries the postgres database for parking meter (smartfolio) data,
+        and sends the response to Socrata.
+    
+    Args:
+        start (string): Inclusive date (UTC) of earliest records to be uploaded
+        end (string): Inclusive date (UTC) of latest records to be uploaded
+        postgrest and sodapy client objects
+    
+    Returns:
+        none
+    """
     logger.debug(f"Publishing parking meter data to Socrata from {start} to {end}")
 
     params = {
@@ -105,7 +131,17 @@ def meters(start, end, pstgrs, soda):
 
 
 def payments(start, end, pstgrs, soda):
-    ## Flowbird payment upsert to socrata
+    """Queries the postgres database for parking meter credit card payment (smartfolio) data,
+        and sends the response to Socrata.
+    
+    Args:
+        start (string): Inclusive date (UTC) of earliest records to be uploaded
+        end (string): Inclusive date (UTC) of latest records to be uploaded
+        postgrest and sodapy client objects
+    
+    Returns:
+        none
+    """
     logger.debug(
         f"Publishing parking meter payment data to Socrata from {start} to {end}"
     )
@@ -123,7 +159,17 @@ def payments(start, end, pstgrs, soda):
 
 
 def transactions(start, end, pstgrs, soda):
-    ## Combined flowbird + passport transactions data
+    """Queries the postgres database for the combined parking transaction data (passport + smartfolio),
+        and sends the response to Socrata.
+    
+    Args:
+        start (string): Inclusive date (UTC) of earliest records to be uploaded
+        end (string): Inclusive date (UTC) of latest records to be uploaded
+        postgrest and sodapy client objects
+    
+    Returns:
+        none
+    """
     logger.debug(
         f"Publishing parking transaction data to Socrata from {start} to {end}"
     )
@@ -141,7 +187,17 @@ def transactions(start, end, pstgrs, soda):
 
 
 def upsert_all(start, end, pstgrs, soda):
-    # Publishes all datasets to socrata
+    """Runs all four dataset publishing functions
+    
+    Args:
+        start (string): Inclusive date (UTC) of earliest records to be uploaded
+        end (string): Inclusive date (UTC) of latest records to be uploaded
+        postgrest and sodapy client objects
+    
+    Returns:
+        none
+    """
+
     fiserv(start, end, pstgrs, soda)
     meters(start, end, pstgrs, soda)
     payments(start, end, pstgrs, soda)
@@ -149,16 +205,21 @@ def upsert_all(start, end, pstgrs, soda):
 
 
 def main(args):
+
+    ## Client objects
+    # postgrest
     pstgrs = Postgrest(
         "http://127.0.0.1:3000",
         token=POSTGREST_TOKEN,
         headers={"Prefer": "return=representation"},
     )
-
+    # sodapy
     soda = Socrata(SO_WEB, SO_TOKEN, username=SO_USER, password=SO_PASS, timeout=500,)
 
+    # format date arugments
     start_date, end_date = handle_date_args(args.start, args.end)
 
+    # CLI argument logic
     if args.dataset:
         if args.dataset == "fiserv":
             fiserv(start_date, end_date, pstgrs, soda)
@@ -175,6 +236,7 @@ def main(args):
         if args.dataset == "all":
             upsert_all(start_date, end_date, pstgrs, soda)
 
+    # If no dataset argument then publish all
     else:
         upsert_all(start_date, end_date, pstgrs, soda)
 
