@@ -266,8 +266,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-logger = utils.get_logger(
-    __file__, level=logging.DEBUG if args.verbose else logging.INFO,
-)
+logger = utils.get_logger(__file__, level=logging.DEBUG)
+
 
 main(args)
