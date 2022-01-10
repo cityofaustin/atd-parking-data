@@ -87,6 +87,16 @@ def get_invoice_id(banking_id, terminal_code):
 
 
 def postgres_datetime(time_field):
+    """Changes the existing datetime field in S3 to a format that can be stored by postgres.
+        First parses the string time as datetime type then outputs as string.
+    
+    Args:
+        time_field (string): Datetime field used by smartfolio. 
+        Sent in a lambda function from a pandas series.
+    
+    Returns:
+        output (string): Formatted datetime field that is compatable with postgres
+    """
 
     output = pd.to_datetime(
         time_field, format="%Y-%m-%d %H:%M:%S", infer_datetime_format=True
@@ -95,6 +105,16 @@ def postgres_datetime(time_field):
 
 
 def transform(smartfolio):
+    """Formats and adds/drops columns of a dataframe from smartfolio to conform 
+        to postgres DB schema.
+    
+    Args:
+        smartfolio (pandas dataframe): The unformatted data stored in S3 from smartfolio.
+    
+    Returns:
+        smartfolio (pandas dataframe): Formatted dataframe that works with DB schema.
+    """
+
     # Drop dupes as there are some overlapping dates in the smartfolio CSVs, keep latest
     smartfolio = smartfolio.drop_duplicates(subset=["SYSTEM_ID"], keep="last")
 
@@ -119,10 +139,6 @@ def transform(smartfolio):
     smartfolio["end_time"] = smartfolio.apply(
         lambda x: postgres_datetime(x["END_DATE"]), axis=1
     )
-
-    # Convert dates back to string
-    smartfolio["start_time"] = smartfolio["start_time"].astype(str)
-    smartfolio["end_time"] = smartfolio["end_time"].astype(str)
 
     smartfolio["timestamp"] = smartfolio["datetime"]
 
@@ -167,7 +183,16 @@ def transform(smartfolio):
 
 
 def to_postgres(smartfolio):
-    # Upsert to database
+    """Uploads the formatted dataframe to two different postgres DBs.
+        flowbird_transactions_raw - just for smartfolio aka flowbird data
+        transactions - a combined parking DB which will also include data from passport
+    
+    Args:
+        smartfolio (pandas dataframe): Formatted dataframe that works with DB schema.
+    
+    Returns:
+        None
+    """
     payload = smartfolio.to_dict(orient="records")
 
     client = Postgrest(
