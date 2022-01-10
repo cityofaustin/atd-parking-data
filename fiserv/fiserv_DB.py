@@ -1,18 +1,18 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Dec  1 14:07:43 2021
+# Standard library imports
+import os
+import ntpath
+import logging
+import argparse
+from datetime import datetime
 
-@author: charliehenry
-"""
 
+# Related third-party imports
 import boto3
 import pandas as pd
-from sodapy import Socrata
-import ntpath
 from pypgrest import Postgrest
 from dotenv import load_dotenv
-import os
+
+import utils
 
 # Envrioment variables
 load_dotenv("fiserv.env")
@@ -21,24 +21,6 @@ AWS_ACCESS_ID = os.environ.get("AWS_ACCESS_ID")
 AWS_PASS = os.environ.get("AWS_PASS")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 POSTGREST_TOKEN = os.environ.get("POSTGREST_TOKEN")
-
-# Arguments select which month folder in S3 to download
-arg_year = 2021
-arg_month = 12
-
-aws_s3_client = boto3.client(
-    "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
-)
-
-# Downloads a file from s3
-def download_s3_file(file_key):
-    """
-    Downloads an email file from s3
-    :param file_key: the full path to the email file
-    :return:
-    """
-    with open((get_file_name(file_key)), "wb") as f:
-        aws_s3_client.download_fileobj(BUCKET_NAME, file_key, f)
 
 
 def get_file_name(file_key):
@@ -50,13 +32,13 @@ def get_file_name(file_key):
     return ntpath.basename(file_key)
 
 
-def get_csv_list(year, month):
+def get_csv_list(year, month, client):
     """
     Returns an array of files parsed into an actual array (as opposed to an object)
     :return: array of strings
     """
     csv_file_list = []
-    pending_csv_list = aws_list_files(year, month)
+    pending_csv_list = aws_list_files(year, month, client)
     for csv_file in pending_csv_list:
         csv_file_list.append(csv_file)
 
@@ -68,13 +50,12 @@ def get_csv_list(year, month):
     return csv_file_list
 
 
-def aws_list_files(year, month):
+def aws_list_files(year, month, client):
     """
     Returns a list of email files.
     :return: object
     """
-    global aws_s3_client
-    response = aws_s3_client.list_objects(
+    response = client.list_objects(
         Bucket=BUCKET_NAME, Prefix="emails/processed/" + str(year) + "/" + str(month),
     )
 
@@ -82,84 +63,134 @@ def aws_list_files(year, month):
         yield content.get("Key")
 
 
-csv_file_list = get_csv_list(arg_year, arg_month)
+def transform(fiserv_df):
+    """
+    Formats and adds columns to a dataframe of Fiserv data for upload to postgres DB
+    Args: dataframe of data from fiserv report csv
+    Returns: formatted dataframe to conform to postgres schema
+    """
+    fiserv_df = fiserv_df[
+        [
+            "Invoice Number",
+            "Transaction Date",
+            "Transaction Type",
+            "Terminal ID",
+            "Batch Number",
+            "Batch Sequence Number",
+            "Submit Date",
+            "Funded Date",
+            "Processed Transaction Amount",
+            "Transaction Status",
+            "Location ID",
+        ]
+    ]
+
+    # Renaming columns to match schema
+    fiserv_df = fiserv_df.rename(
+        columns={
+            "Invoice Number": "invoice_id",
+            "Transaction Date": "transaction_date",
+            "Transaction Type": "transaction_type",
+            "Terminal ID": "meter_id",
+            "Batch Number": "batch_number",
+            "Batch Sequence Number": "batch_sequence_number",
+            "Submit Date": "submit_date",
+            "Funded Date": "funded_date",
+            "Processed Transaction Amount": "amount",
+            "Transaction Status": "transaction_status",
+            "Location ID": "account",
+        }
+    )
+
+    # Account number field is only the last three digits of the account number
+    fiserv_df["account"] = fiserv_df["account"].astype(str).str[-3:].astype(int)
+
+    params = {"select": "invoice_id", "order": "invoice_id"}
+
+    # funded date is assumed to be transaction_date
+    fiserv_df["funded_date"] = fiserv_df["transaction_date"]
+
+    # formatting before upsert
+    fiserv_df["invoice_id"] = fiserv_df["invoice_id"].astype("int64")
+    fiserv_df["batch_number"] = fiserv_df["batch_number"].astype("int64")
+    fiserv_df["batch_sequence_number"] = fiserv_df["batch_sequence_number"].astype(
+        "int64"
+    )
+    fiserv_df["meter_id"] = fiserv_df["meter_id"].astype("int64")
+
+    # Drop dupes, sometimes there are duplicate records emailed
+    fiserv_df = fiserv_df.drop_duplicates(subset=["invoice_id"], keep="first")
+
+    return fiserv_df
 
 
-# Access the files from S3 and place them into a dataframe
-data = []
-for csv_f in csv_file_list:
-    # Parse the file
-    if ".csv" in csv_f:
+def to_postgres(fiserv_df):
+    """
+    Upserts fiserv data to local postgres DB
+    Args: Formatted dataframe from transform function
+    Returns: None.
+    """
+    payload = fiserv_df.to_dict(orient="records")
+
+    # Connect to local DB
+    client = Postgrest(
+        "http://127.0.0.1:3000",
+        token=POSTGREST_TOKEN,
+        headers={"Prefer": "return=representation"},
+    )
+
+    # Upsert to postgres DB
+    client.upsert(resource="fiserv_reports_raw", data=payload)
+
+
+def main(args):
+
+    aws_s3_client = boto3.client(
+        "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
+    )
+
+    # Arguments to pick which month to download from S3
+    year = args.year
+    month = args.month
+
+    # If args are missing, default to current month and/or year
+    if not year:
+        year = datetime.now().year
+
+    if not month:
+        month = datetime.now().month
+
+    csv_file_list = get_csv_list(year, month, aws_s3_client)
+
+    csv_file_list = [f for f in csv_file_list if f.endswith(".csv")]
+
+    # Access the files from S3 and place them into a dataframe
+    for csv_f in csv_file_list:
+        # Parse the file
         response = aws_s3_client.get_object(Bucket=BUCKET_NAME, Key=csv_f)
         df = pd.read_csv(response.get("Body"), sep="\t")
-        data.append(df)
 
-        print("Loaded CSV File: '%s'" % csv_f)
+        logger.debug(f"Loaded CSV File: {csv_f}")
+        # Ignore the emails which send a CSV with only column headers
+        # This happens with the "Contactless-Detail" reports for some reason
+        if not df.empty:
+            df = transform(df)
+            to_postgres(df)
 
-# Creates dataframe from batch of CSVs
-fiserv_df = pd.concat(data, ignore_index=True)
 
-# Subset of columns needed
-fiserv_df = fiserv_df[
-    [
-        "Invoice Number",
-        "Transaction Date",
-        "DBA Name",
-        "Terminal ID",
-        "Batch Number",
-        "Batch Sequence Number",
-        "Submit Date",
-        "Funded Date",
-        "Processed Transaction Amount",
-        "Transaction Status",
-        "Location ID",
-    ]
-]
+# CLI arguments definition
+parser = argparse.ArgumentParser()
 
-# Renaming columns to match schema
-fiserv_df = fiserv_df.rename(
-    columns={
-        "Invoice Number": "invoice_id",
-        "Transaction Date": "transaction_date",
-        "DBA Name": "transaction_type",
-        "Terminal ID": "meter_id",
-        "Batch Number": "batch_number",
-        "Batch Sequence Number": "batch_sequence_number",
-        "Submit Date": "submit_date",
-        "Funded Date": "funded_date",
-        "Processed Transaction Amount": "amount",
-        "Transaction Status": "transaction_status",
-        "Location ID": "account",
-    }
+parser.add_argument(
+    "--year", type=int, help=f"Year of folder to select, defaults to current year",
 )
 
-# Account number field is only the last three digits of the account number
-fiserv_df["account"] = fiserv_df["account"].astype(str).str[-3:].astype(int)
-
-
-params = {"select": "invoice_id", "order": "invoice_id"}
-
-# Initialize validiated column as false for now
-fiserv_df["validated"] = False
-
-# funded date is assumed to be transaction_date
-fiserv_df["funded_date"] = fiserv_df["transaction_date"]
-
-# formatting before upsert
-fiserv_df["invoice_id"] = fiserv_df["invoice_id"].astype("int64")
-fiserv_df["batch_number"] = fiserv_df["batch_number"].astype("int64")
-fiserv_df["batch_sequence_number"] = fiserv_df["batch_sequence_number"].astype("int64")
-fiserv_df["meter_id"] = fiserv_df["meter_id"].astype("int64")
-
-
-payload = fiserv_df.to_dict(orient="records")
-
-# Connect to local DB
-client = Postgrest(
-    "http://127.0.0.1:3000",
-    token=POSTGREST_TOKEN,
-    headers={"Prefer": "return=representation"},
+parser.add_argument(
+    "--month", type=int, help=f"Month of folder to select. defaults to current month",
 )
 
-# Upsert to postgres DB
-two = client.upsert(resource="fiserv_reports_raw", data=payload)
+args = parser.parse_args()
+
+logger = utils.get_logger(__file__, level=logging.DEBUG)
+
+main(args)
