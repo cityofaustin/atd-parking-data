@@ -10,7 +10,8 @@ This script will publish any or all of the four different Socrata datasets for d
 
 ### Socrata Datasets involved
 Also defined as envriomential variables.
-- (Socrata dataset) -> (postgrest table)
+(Socrata dataset) -> (postgrest table)
+
 -  `TXNS_DATASET`     ->   `transactions`
 -  `METERS_DATASET`   ->   `flowbird_transactions_raw`
 -  `PAYMENTS_DATASET` ->   `flowbird_payments_raw`
