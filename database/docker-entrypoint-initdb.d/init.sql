@@ -86,9 +86,11 @@ CREATE TABLE api.flowbird_transactions_raw (
 );
 
 CREATE TABLE api.flowbird_payments_raw (
-  "invoice_id" bigint PRIMARY KEY,
+  "id" bigint PRIMARY KEY,
+  "invoice_id" bigint,
   "card_type" text,
   "meter_id" int,
+  "match_field" text,
   "transaction_type" text,
   "transaction_date" timestamp,
   "transaction_status" text,
@@ -126,7 +128,10 @@ CREATE TABLE api.passport_transactions_raw (
 );
 
 CREATE TABLE api.fiserv_reports_raw (
-  "invoice_id" bigint PRIMARY KEY,
+  "id" text PRIMARY KEY,
+  "flowbird_id" bigint,
+  "match_field" text,
+  "invoice_id" bigint,
   "account" int,
   "transaction_date" timestamp,
   "transaction_type" text,
