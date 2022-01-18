@@ -100,6 +100,8 @@ def fiserv(start, end, pstgrs, soda):
 
     response = tzcleanup(response)
 
+    response = remove_forbidden_keys(response)
+
     soda.upsert(FISERV_DATASET, response)
 
 
@@ -155,6 +157,8 @@ def payments(start, end, pstgrs, soda):
 
     response = tzcleanup(response)
 
+    response = remove_forbidden_keys(response)
+
     soda.upsert(PAYMENTS_DATASET, response)
 
 
@@ -202,6 +206,26 @@ def upsert_all(start, end, pstgrs, soda):
     meters(start, end, pstgrs, soda)
     payments(start, end, pstgrs, soda)
     transactions(start, end, pstgrs, soda)
+
+
+def remove_forbidden_keys(data):
+    """Remove forbidden keys from data that are not needed in Socrata
+
+    Args:
+        data (list): A list of dictionaries, one per transactions
+
+    Returns:
+        list: A list of dictionariess, one per transaction, with forbidden keys removed
+    """
+
+    # There are different forbidden keys based on the report requested
+    forbidden_keys = ["MATCH_FIELD"]
+
+    new_data = []
+    for row in data:
+        new_row = {k: v for k, v in row.items() if k.upper() not in forbidden_keys}
+        new_data.append(new_row)
+    return new_data
 
 
 def main(args):
