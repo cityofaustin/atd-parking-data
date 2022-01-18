@@ -100,6 +100,16 @@ def postgres_datetime(time_field):
     return str(output)
 
 
+def match_field_creation(card_num, invoice_id):
+    """
+    Returns a field for matching between Fiserv and Smartfolio
+    It is defined as a concatenation of the Credit Card number and the invoice ID
+    
+    :return: String
+    """
+    return card_num + "-" + str(invoice_id)
+
+
 def transform(smartfolio):
     """Formats and adds/drops columns of a dataframe from smartfolio to conform 
         to postgres DB schema.
@@ -135,6 +145,8 @@ def transform(smartfolio):
     # Renaming to match schema
     smartfolio = smartfolio.rename(
         columns={
+            "MONETRA_ID": "id",
+            "PAN_HIDDEN": "match_field",
             "SCHEME": "card_type",
             "TERMINAL_ID": "meter_id",
             "TRANSACTION_AMOUNT": "amount",
@@ -143,16 +155,27 @@ def transform(smartfolio):
         }
     )
 
+    # Drops "INCOMPLETE"/"UNSUCCESSFUL" transactions which we don't need.
+    smartfolio = smartfolio.dropna(subset=["id"])
+    smartfolio = smartfolio[smartfolio["transaction_status"] == "COMPLETED"]
+
     # Data types to match schema
     smartfolio["invoice_id"] = smartfolio["invoice_id"].astype(int)
     smartfolio["meter_id"] = smartfolio["meter_id"].astype(int)
+    smartfolio["id"] = smartfolio["id"].astype(int)
 
     # Sometimes blank processed dates are present
     smartfolio["processed_date"] = smartfolio["processed_date"].replace("NaT", None)
 
+    smartfolio["match_field"] = smartfolio.apply(
+        lambda x: match_field_creation(x["match_field"], x["invoice_id"]), axis=1
+    )
+
     # Payload to DB
     smartfolio = smartfolio[
         [
+            "id",
+            "match_field",
             "invoice_id",
             "card_type",
             "meter_id",
@@ -187,8 +210,11 @@ def to_postgres(smartfolio):
         token=POSTGREST_TOKEN,
         headers={"Prefer": "return=representation"},
     )
-
-    res = client.upsert(resource="flowbird_payments_raw", data=payload)
+    try:
+        res = client.upsert(resource="flowbird_payments_raw", data=payload)
+    except:
+        logger.debug(client.res.text)
+        raise
 
 
 def main(args):
