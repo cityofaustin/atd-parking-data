@@ -63,6 +63,28 @@ def aws_list_files(year, month, client):
         yield content.get("Key")
 
 
+def match_field_creation(card_num, invoice_id):
+    """
+    Returns a field for matching between Fiserv and Smartfolio
+    It is defined as a concatenation of the Credit Card number and the invoice ID
+    
+    :return: String
+    """
+    card_num = card_num.replace("*", "x")
+    return card_num + "-" + str(invoice_id)
+
+
+def id_field_creation(invoice_id, batch_number, sequence_number):
+    """
+    Returns a field for matching between Fiserv and Smartfolio
+    It is defined as a concatenation of the Credit Card number and the invoice ID
+    
+    :return: int
+    """
+
+    return int(str(batch_number) + str(sequence_number) + str(invoice_id))
+
+
 def transform(fiserv_df):
     """
     Formats and adds columns to a dataframe of Fiserv data for upload to postgres DB
@@ -72,6 +94,7 @@ def transform(fiserv_df):
     fiserv_df = fiserv_df[
         [
             "Invoice Number",
+            "Cardholder Number",
             "Transaction Date",
             "Transaction Type",
             "Terminal ID",
@@ -89,6 +112,7 @@ def transform(fiserv_df):
     fiserv_df = fiserv_df.rename(
         columns={
             "Invoice Number": "invoice_id",
+            "Cardholder Number": "match_field",
             "Transaction Date": "transaction_date",
             "Transaction Type": "transaction_type",
             "Terminal ID": "meter_id",
@@ -118,6 +142,18 @@ def transform(fiserv_df):
     )
     fiserv_df["meter_id"] = fiserv_df["meter_id"].astype("int64")
 
+    # Field for matching between Fiserv and Flowbird
+
+    fiserv_df["match_field"] = fiserv_df.apply(
+        lambda x: match_field_creation(x["match_field"], x["invoice_id"]), axis=1
+    )
+
+    fiserv_df["id"] = fiserv_df.apply(
+        lambda x: id_field_creation(
+            x["invoice_id"], x["batch_number"], x["batch_sequence_number"]
+        ),
+        axis=1,
+    )
     # Drop dupes, sometimes there are duplicate records emailed
     fiserv_df = fiserv_df.drop_duplicates(subset=["invoice_id"], keep="first")
 
@@ -140,7 +176,11 @@ def to_postgres(fiserv_df):
     )
 
     # Upsert to postgres DB
-    client.upsert(resource="fiserv_reports_raw", data=payload)
+    try:
+        client.upsert(resource="fiserv_reports_raw", data=payload)
+    except:
+        logger.debug(client.res.text)
+        raise
 
 
 def main(args):
