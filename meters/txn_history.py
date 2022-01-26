@@ -138,7 +138,7 @@ def remove_forbidden_keys(data, report):
     if report == "transaction_history":
         forbidden_keys = ["PLATE_NUMBER", "CARD_SERIAL_NUMBER"]
     else:
-        forbidden_keys = ["PAN_HIDDEN"]
+        forbidden_keys = []
 
     new_data = []
     for row in data:
@@ -219,11 +219,12 @@ def main(args):
             # upload to s3
             key = format_file_key(chunk_start, args.env, report)
             logger.debug(f"Uploading to s3: {key}")
-            s3.put_object(Body=body, Bucket=BUCKET, Key=key)
-            logger.debug(f"Sleeping to comply with rate limit...")
-            time.sleep(61)
+            s3.put_object(Body=body, Bucket=BUCKET, Key=key)       
         else:
             logger.debug(f"No data found for {chunk_start} to {chunk_end}")
+        
+        logger.debug(f"Sleeping to comply with rate limit...")
+        time.sleep(61)
 
 
 if __name__ == "__main__":
