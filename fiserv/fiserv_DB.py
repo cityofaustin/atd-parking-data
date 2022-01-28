@@ -79,10 +79,10 @@ def id_field_creation(invoice_id, batch_number, sequence_number):
     Returns a field for matching between Fiserv and Smartfolio
     It is defined as a concatenation of the Credit Card number and the invoice ID
     
-    :return: int
+    :return: str
     """
 
-    return int(str(batch_number) + str(sequence_number) + str(invoice_id))
+    return str(batch_number) + str(sequence_number) + str(invoice_id)
 
 
 def transform(fiserv_df):
@@ -155,7 +155,7 @@ def transform(fiserv_df):
         axis=1,
     )
     # Drop dupes, sometimes there are duplicate records emailed
-    fiserv_df = fiserv_df.drop_duplicates(subset=["invoice_id"], keep="first")
+    # fiserv_df = fiserv_df.drop_duplicates(subset=["invoice_id"], keep="first")
 
     return fiserv_df
 
