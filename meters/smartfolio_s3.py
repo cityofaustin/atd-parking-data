@@ -18,6 +18,7 @@ AWS_ACCESS_ID = os.environ.get("AWS_ACCESS_ID")
 AWS_PASS = os.environ.get("AWS_PASS")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 POSTGREST_TOKEN = os.environ.get("POSTGREST_TOKEN")
+POSTGREST_ENDPOINT = os.environ.get("POSTGREST_ENDPOINT")
 
 
 def get_file_name(file_key):
@@ -196,7 +197,7 @@ def to_postgres(smartfolio):
     payload = smartfolio.to_dict(orient="records")
 
     client = Postgrest(
-        "http://127.0.0.1:3000",
+        POSTGREST_ENDPOINT,
         token=POSTGREST_TOKEN,
         headers={"Prefer": "return=representation"},
     )

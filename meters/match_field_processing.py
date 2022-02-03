@@ -17,6 +17,7 @@ DATE_FORMAT_HUMANS = "%Y-%m-%d"
 
 # Credentials
 POSTGREST_TOKEN = os.environ.get("POSTGREST_TOKEN")
+POSTGREST_ENDPOINT = os.environ.get("POSTGREST_ENDPOINT")
 
 
 def handle_date_args(start_string, end_string):
@@ -164,7 +165,7 @@ def to_postgres(output, pstgrs):
 def main(args):
     # Define postgrest client object with credentials
     pstgrs = Postgrest(
-        "http://127.0.0.1:3000",
+        POSTGREST_ENDPOINT,
         token=POSTGREST_TOKEN,
         headers={"Prefer": "return=representation"},
     )

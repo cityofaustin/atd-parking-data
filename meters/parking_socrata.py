@@ -17,6 +17,7 @@ DATE_FORMAT_HUMANS = "%Y-%m-%d"
 
 # Credentials
 POSTGREST_TOKEN = os.environ.get("POSTGREST_TOKEN")
+POSTGREST_ENDPOINT = os.environ.get("POSTGREST_ENDPOINT")
 SO_WEB = os.environ.get("SO_WEB")
 SO_TOKEN = os.environ.get("SO_TOKEN")
 SO_USER = os.environ.get("SO_USER")
@@ -233,7 +234,7 @@ def main(args):
     ## Client objects
     # postgrest
     pstgrs = Postgrest(
-        "http://127.0.0.1:3000",
+        POSTGREST_ENDPOINT,
         token=POSTGREST_TOKEN,
         headers={"Prefer": "return=representation"},
     )
