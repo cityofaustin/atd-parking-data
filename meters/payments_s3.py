@@ -22,6 +22,59 @@ POSTGREST_TOKEN = os.environ.get("POSTGREST_TOKEN")
 POSTGREST_ENDPOINT = os.environ.get("POSTGREST_ENDPOINT")
 
 
+def handle_year_month_args(year, month, lastmonth, aws_s3_client):
+    """
+
+    Parameters
+    ----------
+    year : Int
+        Argument provided value for year.
+    month : Int
+        Argument provided value for month.
+    lastmonth : Bool
+        Argument that determines if the previous month should also be queried.
+    aws_s3_client : boto3 client object
+        For sending on to get_csv_list
+
+    Returns
+    -------
+    csv_file_list : List
+        A list of the csv files to be downloaded and upsert to Postgres.
+
+    """
+    # If args are missing, default to current month and/or year
+    if not year:
+        f_year = datetime.now().year
+    else:
+        f_year = year
+
+    if not month:
+        f_month = datetime.now().month
+    else:
+        f_month = month
+
+    csv_file_list = get_csv_list(f_year, f_month, aws_s3_client)
+
+    if not month and not year:
+        if lastmonth == True:
+            prev_month = f_month - 1
+            prev_year = f_year
+            if prev_month == 0:
+                prev_year = prev_year - 1
+                prev_month = 12
+            logger.debug(
+                f"Getting data from folders: {prev_month}-{prev_year} and {f_month}-{f_year}"
+            )
+            prev_list = get_csv_list(prev_year, prev_month, aws_s3_client)
+            csv_file_list.extend(prev_list)
+        else:
+            logger.debug(f"Getting data from folders: {f_month}-{f_year}")
+
+    csv_file_list = [f for f in csv_file_list if f.endswith(".csv")]
+
+    return csv_file_list
+
+
 def get_file_name(file_key):
     """
     Returns the name of an email file based on the full s3 file path
@@ -219,27 +272,14 @@ def to_postgres(smartfolio):
 
 
 def main(args):
-    # Arguments to pick which month to download from S3
-    year = args.year
-    month = args.month
-
-    # If args are missing, default to current month and/or year
-    if not year:
-        year = datetime.now().year
-
-    if not month:
-        month = datetime.now().month
 
     aws_s3_client = boto3.client(
         "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
     )
 
-    # Get list of CSVs
-    csv_file_list = get_csv_list(year, month, aws_s3_client)
-
-    # Go through all files and combine into a dataframe
-    csv_file_list = [f for f in csv_file_list if f.endswith(".csv")]
-
+    csv_file_list = handle_year_month_args(
+        args.year, args.month, args.lastmonth, aws_s3_client
+    )
     for csv_f in csv_file_list:
         # Parse the file
         response = aws_s3_client.get_object(Bucket=BUCKET_NAME, Key=csv_f)
@@ -260,6 +300,7 @@ parser.add_argument(
 parser.add_argument(
     "--month", type=int, help=f"Month of folder to select. defaults to current month",
 )
+
 
 args = parser.parse_args()
 
