@@ -12,22 +12,21 @@ from dotenv import load_dotenv
 import utils
 
 # Envrioment variables
-load_dotenv("socrata.env")
 DATE_FORMAT_HUMANS = "%Y-%m-%d"
 
 # Credentials
-POSTGREST_TOKEN = os.environ.get("POSTGREST_TOKEN")
-POSTGREST_ENDPOINT = os.environ.get("POSTGREST_ENDPOINT")
-SO_WEB = os.environ.get("SO_WEB")
-SO_TOKEN = os.environ.get("SO_TOKEN")
-SO_USER = os.environ.get("SO_USER")
-SO_PASS = os.environ.get("SO_PASS")
+POSTGREST_TOKEN = os.getenv("POSTGREST_TOKEN")
+POSTGREST_ENDPOINT = os.getenv("POSTGREST_ENDPOINT")
+SO_WEB = os.getenv("SO_WEB")
+SO_TOKEN = os.getenv("SO_TOKEN")
+SO_USER = os.getenv("SO_USER")
+SO_PASS = os.getenv("SO_PASS")
 
 # Socrata dataset IDs
-FISERV_DATASET = os.environ.get("FISERV_DATASET")
-METERS_DATASET = os.environ.get("METERS_DATASET")
-PAYMENTS_DATASET = os.environ.get("PAYMENTS_DATASET")
-TXNS_DATASET = os.environ.get("TXNS_DATASET")
+FISERV_DATASET = os.getenv("FISERV_DATASET")
+METERS_DATASET = os.getenv("METERS_DATASET")
+PAYMENTS_DATASET = os.getenv("PAYMENTS_DATASET")
+TXNS_DATASET = os.getenv("TXNS_DATASET")
 
 
 def tzcleanup(data):

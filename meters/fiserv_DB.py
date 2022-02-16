@@ -15,13 +15,12 @@ from dotenv import load_dotenv
 import utils
 
 # Envrioment variables
-load_dotenv("fiserv.env")
 
-AWS_ACCESS_ID = os.environ.get("AWS_ACCESS_ID")
-AWS_PASS = os.environ.get("AWS_PASS")
-BUCKET_NAME = os.environ.get("BUCKET_NAME")
-POSTGREST_TOKEN = os.environ.get("POSTGREST_TOKEN")
-POSTGREST_ENDPOINT = os.environ.get("POSTGREST_ENDPOINT")
+AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
+AWS_PASS = os.getenv("AWS_PASS")
+BUCKET_NAME = os.getenv("BUCKET_NAME")
+POSTGREST_TOKEN = os.getenv("POSTGREST_TOKEN")
+POSTGREST_ENDPOINT = os.getenv("POSTGREST_ENDPOINT")
 
 
 def handle_year_month_args(year, month, lastmonth, aws_s3_client):

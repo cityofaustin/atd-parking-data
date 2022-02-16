@@ -12,12 +12,11 @@ import pandas as pd
 import utils
 
 # Envrioment variables
-load_dotenv("socrata.env")
 DATE_FORMAT_HUMANS = "%Y-%m-%d"
 
 # Credentials
-POSTGREST_TOKEN = os.environ.get("POSTGREST_TOKEN")
-POSTGREST_ENDPOINT = os.environ.get("POSTGREST_ENDPOINT")
+POSTGREST_TOKEN = os.getenv("POSTGREST_TOKEN")
+POSTGREST_ENDPOINT = os.getenv("POSTGREST_ENDPOINT")
 
 
 def handle_date_args(start_string, end_string):

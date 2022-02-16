@@ -12,12 +12,11 @@ from dotenv import load_dotenv
 import utils
 
 # Envrioment variables
-load_dotenv("fiserv.env")
 
-AWS_ACCESS_ID = os.environ.get("AWS_ACCESS_ID")
-AWS_PASS = os.environ.get("AWS_PASS")
-BUCKET_NAME = os.environ.get("BUCKET_NAME")
-FSRV_EMAIL = os.environ.get("FSRV_EMAIL")
+AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
+AWS_PASS = os.getenv("AWS_PASS")
+BUCKET_NAME = os.getenv("BUCKET_NAME")
+FSRV_EMAIL = os.getenv("FSRV_EMAIL")
 
 
 # Downloads a file from s3
