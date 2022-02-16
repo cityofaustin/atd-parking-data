@@ -300,6 +300,12 @@ parser.add_argument(
     "--month", type=int, help=f"Month of folder to select. defaults to current month",
 )
 
+parser.add_argument(
+    "--lastmonth",
+    type=bool,
+    help=f"Will download from current month folder as well as previous.",
+    default=False,
+)
 
 args = parser.parse_args()
 
