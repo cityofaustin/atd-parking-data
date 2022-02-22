@@ -102,14 +102,17 @@ CREATE TABLE api.flowbird_payments_raw (
 
 CREATE TABLE api.flowbird_HUB_transactions_raw (
   "id" bigint PRIMARY KEY,
+  "source" text,
   "payment_method" text,
   "meter_id" int,
-  "timestamp" timestamp,
-  "duration_min" real,
-  "start_time" timestamp,
-  "end_time" timestamp,
-  "amount" real,
-  "invoice_id" bigint,
+  "meter_name" text,
+  "transaction_date" timestamp,
+  "amount_charged" real,
+  "amount_paid" real,
+  "amount_refuned" real,
+  "amount_returned" real,
+  "amount_voucher" real,
+  "status" text,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
