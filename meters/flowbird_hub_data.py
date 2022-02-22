@@ -7,20 +7,18 @@ import logging
 import os
 
 import pandas as pd
-from dotenv import load_dotenv
 from pypgrest import Postgrest
 
 import utils
 
-# Envrioment variables
-load_dotenv("hub.env")
 
-HUB_USER = os.environ.get("HUB_USER")
-HUB_PASS = os.environ.get("HUB_PASS")
-HUB_URL = os.environ.get("HUB_URL")
-API_URL = os.environ.get("API_URL")
+HUB_USER = os.getenv("HUB_USER")
+HUB_PASS = os.getenv("HUB_PASS")
+HUB_URL = os.getenv("HUB_URL")
+API_URL = os.getenv("API_URL")
 
-POSTGREST_TOKEN = os.environ.get("LOCAL_TOKEN")
+POSTGREST_ENDPOINT = os.getenv("POSTGREST_ENDPOINT")
+POSTGREST_TOKEN = os.getenv("LOCAL_TOKEN")
 
 DATE_FORMAT_INPUT = "%Y-%m-%d"
 
@@ -257,7 +255,7 @@ def main(args):
     web = get_data(session, "web", "2021-12-01", "2022-03-01")
 
     client = Postgrest(
-        "http://127.0.0.1:3000",
+        POSTGREST_ENDPOINT,
         token=POSTGREST_TOKEN,
         headers={"Prefer": "return=representation"},
     )
