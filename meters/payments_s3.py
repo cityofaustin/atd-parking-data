@@ -104,7 +104,7 @@ def aws_list_files(year, month, client):
     """
     response = client.list_objects(
         Bucket=BUCKET_NAME,
-        Prefix="meters/dev/archipel_transactionspub/" + str(year) + "/" + str(month),
+        Prefix="meters/prod/archipel_transactionspub/" + str(year) + "/" + str(month),
     )
 
     for content in response.get("Contents", []):
