@@ -68,17 +68,6 @@ def get_email_list(s3):
     return email_file_list
 
 
-def aws_list_files(client):
-    """
-    Returns a list of email files.
-    :return: object
-    """
-    response = client.list_objects(Bucket=BUCKET_NAME, Prefix="emails/")
-
-    for content in response.get("Contents", []):
-        yield content.get("Key")
-
-
 def format_file_name(emailObject):
     """
     Returns a file name + path for each csv file based on the email send date
