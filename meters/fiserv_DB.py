@@ -97,7 +97,8 @@ def get_csv_list(year, month, client):
 
     # Remove the first item, it is not needed
     # since it is just the name of the folder
-    csv_file_list.pop(0)
+    if len(csv_file_list) > 0:
+        csv_file_list.pop(0)
 
     # Finally return the final list
     return csv_file_list
@@ -245,6 +246,10 @@ def main(args):
     csv_file_list = handle_year_month_args(
         args.year, args.month, args.lastmonth, aws_s3_client
     )
+    
+    if len(csv_file_list) == 0:
+        logger.debug("No Files found for selected months, nothing happened.")
+
 
     # Access the files from S3 and place them into a dataframe
     for csv_f in csv_file_list:

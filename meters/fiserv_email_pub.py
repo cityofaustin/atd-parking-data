@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 import utils
 
+
 # Envrioment variables
 
 AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
@@ -47,34 +48,24 @@ def parse_email(file_key):
     return mailparser.parse_from_file(get_file_name(file_key))
 
 
-def get_email_list(client):
+def get_email_list(s3):
     """
     Returns an array of files parsed into an actual array (as opposed to an object)
     :return: array of strings and ignores those that have already been processed
     """
     email_file_list = []
-    pending_email_list = aws_list_files(client)
 
-    # Ignores files already in the archive folder and those with zero attachments
-    for email_file in pending_email_list:
-        if len(get_file_name(email_file)) > 0 and "archive" not in email_file:
-            email_file_list.append(email_file)
+    my_bucket = s3.Bucket(BUCKET_NAME)
 
-    # Remove files from list which have already been processed.
-    email_file_list = [f for f in email_file_list if not f.endswith(".csv")]
+    for object_summary in my_bucket.objects.filter(Prefix="emails/"):
+        if (
+            not object_summary.key.endswith(".csv")
+            and len(get_file_name(object_summary.key)) > 0
+            and "archive" not in object_summary.key
+        ):
+            email_file_list.append(object_summary.key)
 
     return email_file_list
-
-
-def aws_list_files(client):
-    """
-    Returns a list of email files.
-    :return: object
-    """
-    response = client.list_objects(Bucket=BUCKET_NAME, Prefix="emails/")
-
-    for content in response.get("Contents", []):
-        yield content.get("Key")
 
 
 def format_file_name(emailObject):
@@ -113,7 +104,7 @@ def main():
         "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
     )
 
-    email_file_list = get_email_list(aws_s3_client)
+    email_file_list = get_email_list(s3)
 
     logger.debug(f"Emails in inbox: {len(email_file_list)}")
 
