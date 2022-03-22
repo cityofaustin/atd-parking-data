@@ -227,6 +227,8 @@ def transform(smartfolio):
     smartfolio["timedelta"] = (
         smartfolio["end_datetime"] - smartfolio["start_datetime"]
     ).dt.total_seconds()
+
+    smartfolio["timedelta"] = smartfolio["timedelta"] / 60
     smartfolio.loc[smartfolio["duration_min"].isna(), "duration_min"] = smartfolio.loc[
         smartfolio["duration_min"].isna(), "timedelta"
     ]
