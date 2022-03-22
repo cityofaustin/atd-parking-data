@@ -14,7 +14,9 @@ import utils
 
 # env vars
 USER = os.getenv("USER")
+USER_PARD = os.getenv("USER_PARD")
 PASSWORD = os.getenv("PASSWORD")
+PASSWORD_PARD = os.getenv("PASSWORD_PARD")
 ENDPOINT = os.getenv("ENDPOINT")
 BUCKET = os.getenv("BUCKET")
 
@@ -171,6 +173,16 @@ def main(args):
     else:
         report = "archipel_transactionspub"
 
+    # Argument to decide which account to use
+    ## pard for Parks data which includes pool passes
+    ## atd for parking meters
+    if args.user == "pard":
+        login_user = USER_PARD
+        login_pass = PASSWORD_PARD
+    else:
+        login_user = USER
+        login_pass = PASSWORD
+
     s3 = boto3.client("s3")
 
     for chunk_start in todos:
@@ -182,16 +194,16 @@ def main(args):
                 "startdate": chunk_start,
                 "enddate": chunk_end,
                 "report": report,
-                "login": USER,
-                "password": PASSWORD,
+                "login": login_user,
+                "password": login_pass,
             }
         else:
             data = {
                 "startdatetime": chunk_start,
                 "enddatetime": chunk_end,
                 "report": report,
-                "login": USER,
-                "password": PASSWORD,
+                "login": login_user,
+                "password": login_pass,
             }
 
         # get data
@@ -219,10 +231,10 @@ def main(args):
             # upload to s3
             key = format_file_key(chunk_start, args.env, report)
             logger.debug(f"Uploading to s3: {key}")
-            s3.put_object(Body=body, Bucket=BUCKET, Key=key)       
+            s3.put_object(Body=body, Bucket=BUCKET, Key=key)
         else:
             logger.debug(f"No data found for {chunk_start} to {chunk_end}")
-        
+
         logger.debug(f"Sleeping to comply with rate limit...")
         time.sleep(61)
 
@@ -247,6 +259,13 @@ if __name__ == "__main__":
         default="transactions",
         choices=["transactions", "payments"],
         help=f"The type of report to collect (transactions, payments)",
+    )
+
+    parser.add_argument(
+        "--user",
+        default="atd",
+        choices=["pard", "atd"],
+        help=f"The user account to use to access data [atd (parking meters), pard (pool passes)]",
     )
 
     parser.add_argument(
