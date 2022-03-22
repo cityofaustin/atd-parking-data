@@ -149,7 +149,7 @@ def remove_forbidden_keys(data, report):
     return new_data
 
 
-def format_file_key(chunk_start, env, report):
+def format_file_key(chunk_start, env, report, user):
     """Format an S3 file path
 
     Args:
@@ -160,6 +160,11 @@ def format_file_key(chunk_start, env, report):
           meters/transaction_history/year/month/<query-string>.csv
     """
     file_date = datetime.strptime(chunk_start, DATE_FORMAT_API)
+
+    # different directory for PARD Data
+    if user == "pard":
+        report = f"{report}-PARD"
+
     return f"{ROOT_DIR}/{env}/{report}/{file_date.year}/{file_date.month}/{chunk_start}.csv"
 
 
@@ -229,7 +234,7 @@ def main(args):
             body = data_to_string(data)
 
             # upload to s3
-            key = format_file_key(chunk_start, args.env, report)
+            key = format_file_key(chunk_start, args.env, report, args.user)
             logger.debug(f"Uploading to s3: {key}")
             s3.put_object(Body=body, Bucket=BUCKET, Key=key)
         else:
