@@ -216,6 +216,23 @@ def transform(smartfolio):
     smartfolio["meter_id"] = smartfolio["meter_id"].astype(int)
     smartfolio["end_time"] = smartfolio["end_time"].replace("NaT", None)
 
+    # This handles the case where the duration field is null.
+    # Replace with the actual duration between start/end times.
+    smartfolio["start_datetime"] = pd.to_datetime(
+        smartfolio["start_time"], format="%Y-%m-%d %H:%M:%S", infer_datetime_format=True
+    )
+    smartfolio["end_datetime"] = pd.to_datetime(
+        smartfolio["end_time"], format="%Y-%m-%d %H:%M:%S", infer_datetime_format=True
+    )
+    smartfolio["timedelta"] = (
+        smartfolio["end_datetime"] - smartfolio["start_datetime"]
+    ).dt.total_seconds()
+
+    smartfolio["timedelta"] = smartfolio["timedelta"] / 60
+    smartfolio.loc[smartfolio["duration_min"].isna(), "duration_min"] = smartfolio.loc[
+        smartfolio["duration_min"].isna(), "timedelta"
+    ]
+
     # Only subset of columns needed for schema
     smartfolio = smartfolio[
         [
@@ -256,6 +273,7 @@ def to_postgres(smartfolio):
 
     res = client.upsert(resource="flowbird_transactions_raw", data=payload)
 
+    # Send data to the combined transactions dataset
     smartfolio = smartfolio[
         [
             "id",
