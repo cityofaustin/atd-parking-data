@@ -21,7 +21,7 @@ POSTGREST_TOKEN = os.getenv("POSTGREST_TOKEN")
 POSTGREST_ENDPOINT = os.getenv("POSTGREST_ENDPOINT")
 
 
-def handle_year_month_args(year, month, lastmonth, aws_s3_client):
+def handle_year_month_args(year, month, lastmonth, aws_s3_client, user):
     """
 
     Parameters
@@ -52,7 +52,7 @@ def handle_year_month_args(year, month, lastmonth, aws_s3_client):
     else:
         f_month = month
 
-    csv_file_list = get_csv_list(f_year, f_month, aws_s3_client)
+    csv_file_list = get_csv_list(f_year, f_month, aws_s3_client, user)
 
     if not month and not year:
         if lastmonth == True:
@@ -64,7 +64,7 @@ def handle_year_month_args(year, month, lastmonth, aws_s3_client):
             logger.debug(
                 f"Getting data from folders: {prev_month}-{prev_year} and {f_month}-{f_year}"
             )
-            prev_list = get_csv_list(prev_year, prev_month, aws_s3_client)
+            prev_list = get_csv_list(prev_year, prev_month, aws_s3_client, user)
             csv_file_list.extend(prev_list)
         else:
             logger.debug(f"Getting data from folders: {f_month}-{f_year}")
@@ -83,13 +83,13 @@ def get_file_name(file_key):
     return ntpath.basename(file_key)
 
 
-def get_csv_list(year, month, client):
+def get_csv_list(year, month, client, user):
     """
     Returns an array of files parsed into an actual array (as opposed to an object)
     :return: array of strings
     """
     csv_file_list = []
-    pending_csv_list = aws_list_files(year, month, client)
+    pending_csv_list = aws_list_files(year, month, client, user)
     for csv_file in pending_csv_list:
         csv_file_list.append(csv_file)
 
@@ -97,11 +97,16 @@ def get_csv_list(year, month, client):
     return csv_file_list
 
 
-def aws_list_files(year, month, client):
+def aws_list_files(year, month, client, user):
     """
     Returns a list of email files.
     :return: object
     """
+    subdir = "archipel_transactionspub"
+
+    if user == "pard":
+        subdir = f"{subdir}-PARD"
+
     response = client.list_objects(
         Bucket=BUCKET_NAME,
         Prefix="meters/prod/archipel_transactionspub/" + str(year) + "/" + str(month),
@@ -277,7 +282,7 @@ def main(args):
     )
 
     csv_file_list = handle_year_month_args(
-        args.year, args.month, args.lastmonth, aws_s3_client
+        args.year, args.month, args.lastmonth, aws_s3_client, args.user
     )
     for csv_f in csv_file_list:
         # Parse the file
@@ -305,6 +310,13 @@ parser.add_argument(
     type=bool,
     help=f"Will download from current month folder as well as previous.",
     default=False,
+)
+
+parser.add_argument(
+    "--user",
+    default="atd",
+    choices=["pard", "atd"],
+    help=f"The user account to use to access data [atd (parking meters), pard (pool passes)]",
 )
 
 args = parser.parse_args()
