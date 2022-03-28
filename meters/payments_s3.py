@@ -108,8 +108,7 @@ def aws_list_files(year, month, client, user):
         subdir = f"{subdir}-PARD"
 
     response = client.list_objects(
-        Bucket=BUCKET_NAME,
-        Prefix="meters/prod/archipel_transactionspub/" + str(year) + "/" + str(month),
+        Bucket=BUCKET_NAME, Prefix=f"meters/prod/{subdir}/{str(year)}/{str(month)}",
     )
 
     for content in response.get("Contents", []):
