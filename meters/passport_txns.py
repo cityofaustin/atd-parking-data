@@ -127,7 +127,7 @@ def get_todos(start_date, end_date):
 
 
 def remove_forbidden_keys(data):
-    """Remove forbidden keys from datta
+    """Remove forbidden keys from data
 
     Args:
         data (list): A list of dictionaries, one per transactions

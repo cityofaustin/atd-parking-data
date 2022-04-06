@@ -20,7 +20,7 @@ POSTGREST_TOKEN = os.getenv("POSTGREST_TOKEN")
 S3_ENV = "prod"
 
 
-def handle_year_month_args(year, month, lastmonth, s3_client):
+def get_csv_list_for_processing(year, month, lastmonth, s3_client):
     """
     Parameters
     ----------
@@ -211,7 +211,9 @@ def main(args):
     )
 
     # Get list of JSON files and handle year/month args
-    file_list = handle_year_month_args(args.year, args.month, args.lastmonth, s3_client)
+    file_list = get_csv_list_for_processing(
+        args.year, args.month, args.lastmonth, s3_client
+    )
 
     # Go through all files and combine into a dataframe
     data = []
