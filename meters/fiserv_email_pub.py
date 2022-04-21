@@ -51,19 +51,14 @@ def parse_email(file_key):
 def get_email_list(s3):
     """
     Returns an array of files parsed into an actual array (as opposed to an object)
-    :return: array of strings and ignores those that have already been processed
+    :return: array of strings of emails in our inbox
     """
     email_file_list = []
 
     my_bucket = s3.Bucket(BUCKET_NAME)
 
-    for object_summary in my_bucket.objects.filter(Prefix="emails/"):
-        if (
-            not object_summary.key.endswith(".csv")
-            and len(get_file_name(object_summary.key)) > 0
-            and "archive" not in object_summary.key
-        ):
-            email_file_list.append(object_summary.key)
+    for object_summary in my_bucket.objects.filter(Prefix="emails/new"):
+        email_file_list.append(object_summary.key)
 
     return email_file_list
 
