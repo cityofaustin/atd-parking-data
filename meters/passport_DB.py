@@ -89,10 +89,6 @@ def get_file_list(year, month, s3_client):
     for csv_file in pending_csv_list:
         csv_file_list.append(csv_file)
 
-    # Remove the first item, it is not needed
-    # since it is just the name of the folder
-    csv_file_list.pop(0)
-
     # Finally return the final list
     return csv_file_list
 

@@ -136,7 +136,9 @@ def id_field_creation(invoice_id, batch_number, sequence_number):
     :return: str
     """
 
-    return str(batch_number) + str(sequence_number) + str(invoice_id)
+    ## Old ID included sequence number but this was changing over time in PARD transactions
+    # return str(batch_number) + str(sequence_number) + str(invoice_id)
+    return str(batch_number) + str(invoice_id)
 
 
 def transform(fiserv_df):
@@ -246,10 +248,9 @@ def main(args):
     csv_file_list = handle_year_month_args(
         args.year, args.month, args.lastmonth, aws_s3_client
     )
-    
+
     if len(csv_file_list) == 0:
         logger.debug("No Files found for selected months, nothing happened.")
-
 
     # Access the files from S3 and place them into a dataframe
     for csv_f in csv_file_list:
