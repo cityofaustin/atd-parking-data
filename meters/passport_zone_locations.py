@@ -1,4 +1,4 @@
-"""Fetch Flowbird meter transactions and load to S3"""
+"""Get Passport Zone Locations And Share them on Socrata"""
 import argparse
 from datetime import datetime, timezone, timedelta
 import json
@@ -7,18 +7,19 @@ import os
 
 import boto3
 import requests
+import sodapy
 
 import utils
 
 
 # Settings
-ROOT_DIR = "app"
+ROOT_DIR = "app-zoneinfo"
 DATE_FORMAT_API = "%m/%d/%Y"
 DATE_FORMAT_INPUT = "%Y-%m-%d"
 
 # OpsMan Endpoints
 LOGIN_URL = "https://ppprk.com/server/opmgmt/api/index.php/login"
-REPORT_URL = "https://ppprk.com/server/opmgmt/api/reports_index.php/runcustomreport"
+REPORT_URL = "https://ppprk.com/server/opmgmt/api/index.php/getozinfo"
 
 # OpsMan Credentials
 USER = os.getenv("OPS_MAN_USER")
@@ -28,6 +29,12 @@ PASSWORD = os.getenv("OPS_MAN_PASS")
 AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
 AWS_PASS = os.getenv("AWS_PASS")
 BUCKET = os.getenv("BUCKET_NAME")
+
+# Socrata
+SO_WEB = os.getenv("SO_WEB")
+SO_TOKEN = os.getenv("SO_TOKEN")
+SO_USER = os.getenv("SO_USER")
+SO_PASS = os.getenv("SO_PASS")
 
 
 def validate_session(session):
@@ -58,20 +65,14 @@ def start_session(user, password, url):
 
 def get_report_params(session):
     return {
-        "report_id": 295,
         "timezonename": "Etc/GMT-6",
     }
 
 
-def get_report_payload(start_date, start_count, page_size):
+def get_report_payload(zone_id):
     return {
-        "startdate": start_date.strftime(DATE_FORMAT_API),
-        "enddate": start_date.strftime(DATE_FORMAT_API),
-        "locale": "en",
+        "zonenumberlookup": zone_id,
         "operator_id": [550],
-        "zone_id": [],
-        "start": start_count,
-        "count": page_size,
     }
 
 
@@ -145,7 +146,7 @@ def remove_forbidden_keys(data):
     return new_data
 
 
-def format_file_key(file_date, env):
+def format_file_key(zone_id, env):
     """Format an S3 file path
 
     Args:
@@ -155,94 +156,110 @@ def format_file_key(file_date, env):
         str: an S3 path + filename, aka the object key, in the format
           meters/transaction_history/year/month/<query-string>.json
     """
-    return f"{ROOT_DIR}/{env}/{file_date.year}/{file_date.month}/{file_date.strftime(DATE_FORMAT_INPUT)}.json"
+    return f"{ROOT_DIR}/{env}/{zone_id}.json"
 
 
-def main(args):
-    # Format arguments and get list of dates
-    start_date, end_date = handle_date_args(args.start, args.end)
-    todos = get_todos(start_date, end_date)
-
-    # Log in to OpsMan
-    session = start_session(USER, PASSWORD, LOGIN_URL)
-
-    # AWS log in
-    s3 = boto3.client(
-        "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
+def get_socrata_client():
+    return sodapy.Socrata(
+        SO_WEB, SO_TOKEN, username=SO_USER, password=SO_PASS, timeout=60,
     )
 
-    # Get request params
-    params = get_report_params(session)
 
-    for chunk_start in todos:
-        stop = False
-        start_count = 0
-        page_size = 200
-        records = []
+# def main(args):
+# Format arguments and get list of dates
 
-        # Results paginated, so go through each page and download the data
-        while not stop:
-            # get data
-            logger.debug(
-                f"Fetching records for {chunk_start} starting at {start_count}"
-            )
-            payload = get_report_payload(chunk_start, start_count, page_size)
-            res = session.post(REPORT_URL, json=payload, params=params)
-            res.raise_for_status()
+# env = args.env
+env = "dev"
 
-            # Handle data
-            data = res.json()
-            current_records = data["data"]
-            records.extend(current_records)
-            if current_records:
-                total_record_count = data["count"]
-                current_record_count = len(current_records)
-                logger.debug(f"Found: {current_record_count} records")
-                logger.debug(f"{len(records)} out of {total_record_count} downloaded")
-            else:
-                logger.debug(f"No data found for on {chunk_start}")
-                total_record_count = 0
+# Log in to OpsMan
+session = start_session(USER, PASSWORD, LOGIN_URL)
 
-            # stop condition and go to next page
-            start_count += page_size
-            stop = len(records) >= total_record_count
+# AWS log in
+s3 = boto3.client(
+    "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
+)
 
-        # Drop fields we don't need
-        records = remove_forbidden_keys(records)
-        key = format_file_key(chunk_start, args.env)
+# Get Zone IDs
+socrata_client = get_socrata_client()
 
-        # Send to S3 bucket
-        logger.debug(f"Uploading to s3: {key}")
-        s3.put_object(Body=json.dumps(records), Bucket=BUCKET, Key=key)
+zones = socrata_client.get("5bb2-gtef", select="zone_id", group="zone_id")
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+# Get request params
+params = get_report_params(session)
 
-    parser.add_argument(
-        "--start",
-        type=str,
-        help=f"Date (in UTC) of earliest records to be fetched (YYYY-MM-DD). Defaults to yesterday",
-    )
+for row in zones:
+    if len(row) > 0:
+        zone_id = row["zone_id"]
+        # logger.debug(f"Fetching location info for zone: {zone_id}")
+        payload = get_report_payload(zone_id)
+        cookie = session.cookies.get("omsessiondata")
+        url = f"{REPORT_URL}?zonenumberlookup={zone_id}&omsessiondata={cookie}"
+        res = session.get(url)
+        res.raise_for_status()
+        data = res.json()
+        current_records = data["data"]
+        key = format_file_key(zone_id, env)
+        # logger.debug(f"Uploading to s3: {key}")
+        s3.put_object(Body=json.dumps(data), Bucket=BUCKET, Key=key)
 
-    parser.add_argument(
-        "--end",
-        type=str,
-        help=f"Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to today",
-    )
+    # # Results paginated, so go through each page and download the data
+    # while not stop:
+    #     # get data
+    #     logger.debug(f"Fetching records for {chunk_start} starting at {start_count}")
+    #     payload = get_report_payload(chunk_start, start_count, page_size)
+    #     res = session.post(REPORT_URL, json=payload, params=params)
+    #     res.raise_for_status()
 
-    parser.add_argument(
-        "-e", "--env", default="dev", choices=["dev", "prod"], help=f"The environment",
-    )
+    #     # Handle data
+    #     data = res.json()
+    #     current_records = data["data"]
+    #     records.extend(current_records)
+    #     total_record_count = data["count"]
+    #     current_record_count = len(current_records)
+    #     logger.debug(f"Found: {current_record_count} records")
+    #     logger.debug(f"{len(records)} out of {total_record_count} downloaded")
 
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help=f"Sets logger to DEBUG level",
-    )
+    #     # stop condition and go to next page
+    #     start_count += page_size
+    #     stop = len(records) >= total_record_count
 
-    args = parser.parse_args()
+    # # Drop fields we don't need
+    # records = remove_forbidden_keys(records)
+    # key = format_file_key(chunk_start, args.env)
 
-    logger = utils.get_logger(
-        __file__, level=logging.DEBUG if args.verbose else logging.INFO,
-    )
+    # # Send to S3 bucket
+    # logger.debug(f"Uploading to s3: {key}")
+    # s3.put_object(Body=json.dumps(records), Bucket=BUCKET, Key=key)
 
-    main(args)
+
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+
+#     parser.add_argument(
+#         "--start",
+#         type=str,
+#         help=f"Date (in UTC) of earliest records to be fetched (YYYY-MM-DD). Defaults to yesterday",
+#     )
+
+#     parser.add_argument(
+#         "--end",
+#         type=str,
+#         help=f"Date (in UTC) of the most recent records to be fetched (YYYY-MM-DD). Defaults to today",
+#     )
+
+#     parser.add_argument(
+#         "-e", "--env", default="dev", choices=["dev", "prod"], help=f"The environment",
+#     )
+
+#     parser.add_argument(
+#         "-v", "--verbose", action="store_true", help=f"Sets logger to DEBUG level",
+#     )
+
+#     args = parser.parse_args()
+
+#     logger = utils.get_logger(
+#         __file__, level=logging.DEBUG if args.verbose else logging.INFO,
+#     )
+
+#     main(args)

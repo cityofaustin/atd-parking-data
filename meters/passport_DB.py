@@ -149,6 +149,9 @@ def transform(passport):
         }
     )
 
+    # Ignore zones which were created for testing, they all contain AUS in the ID
+    passport = passport[~passport["zone_id"].astype("str").str.contains("AUS")]
+
     # Subset of columns for aligning schema
     passport = passport[
         [
@@ -220,10 +223,10 @@ def main(args):
             # Read the JSON in each object
             df = pd.read_json(response.get("Body"))
             print("Loaded File: '%s'" % file)
+            if not df.empty:
+                df = transform(df)
 
-            df = transform(df)
-
-            res = to_postgres(df, client)
+                res = to_postgres(df, client)
 
 
 # CLI arguments definition
