@@ -110,8 +110,21 @@ def transform(passport):
     # Add "passport" to clarify where how the transaction was completed
     passport["source"] = "Passport - " + passport["Method"]
 
+    ## Changes to default payment method names
     passport["payment_method"] = passport["Payment Type"].str.replace(
-        "Credit/Debit Card", "CARD", regex=True
+        "Credit/Debit Card", "App - Credit Card", regex=True
+    )
+
+    passport["payment_method"] = passport["Payment Type"].str.replace(
+        "Zone Cash", "App - Wallet", regex=True
+    )
+
+    passport["payment_method"] = passport["Payment Type"].str.replace(
+        "Validation", "App - Validation", regex=True
+    )
+
+    passport["payment_method"] = passport["Payment Type"].str.replace(
+        "Free", "App - Free", regex=True
     )
 
     # Convert string currency amounts to floats
