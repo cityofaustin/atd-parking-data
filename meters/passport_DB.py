@@ -127,6 +127,10 @@ def transform(passport):
         "Free", "App - Free", regex=True
     )
 
+    passport["payment_method"] = passport["Payment Type"].str.replace(
+        "Network Token", "App - Network Token", regex=True
+    )
+
     # Convert string currency amounts to floats
     passport["amount"] = (
         passport["Parking Revenue"].str.replace("$", "", regex=True).astype(float)
