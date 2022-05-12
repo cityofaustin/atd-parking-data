@@ -109,25 +109,25 @@ def aws_list_files(year, month, client):
 def transform(passport):
     # Add "passport" to clarify where how the transaction was completed
     passport["source"] = "Passport - " + passport["Method"]
-
+    passport["payment_method"] = passport["Payment Type"]
     ## Changes to default payment method names
-    passport["payment_method"] = passport["Payment Type"].str.replace(
+    passport["payment_method"] = passport["payment_method"].str.replace(
         "Credit/Debit Card", "App - Credit Card", regex=True
     )
 
-    passport["payment_method"] = passport["Payment Type"].str.replace(
+    passport["payment_method"] = passport["payment_method"].str.replace(
         "Zone Cash", "App - Wallet", regex=True
     )
 
-    passport["payment_method"] = passport["Payment Type"].str.replace(
+    passport["payment_method"] = passport["payment_method"].str.replace(
         "Validation", "App - Validation", regex=True
     )
 
-    passport["payment_method"] = passport["Payment Type"].str.replace(
+    passport["payment_method"] = passport["payment_method"].str.replace(
         "Free", "App - Free", regex=True
     )
 
-    passport["payment_method"] = passport["Payment Type"].str.replace(
+    passport["payment_method"] = passport["payment_method"].str.replace(
         "Network Token", "App - Network Token", regex=True
     )
 
