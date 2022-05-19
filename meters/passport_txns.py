@@ -194,10 +194,14 @@ def main(args):
             data = res.json()
             current_records = data["data"]
             records.extend(current_records)
-            total_record_count = data["count"]
-            current_record_count = len(current_records)
-            logger.debug(f"Found: {current_record_count} records")
-            logger.debug(f"{len(records)} out of {total_record_count} downloaded")
+            if current_records:
+                total_record_count = data["count"]
+                current_record_count = len(current_records)
+                logger.debug(f"Found: {current_record_count} records")
+                logger.debug(f"{len(records)} out of {total_record_count} downloaded")
+            else:
+                logger.debug(f"No data found for on {chunk_start}")
+                total_record_count = 0
 
             # stop condition and go to next page
             start_count += page_size
