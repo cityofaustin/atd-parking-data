@@ -210,8 +210,9 @@ def transform(fiserv_df):
         ),
         axis=1,
     )
+
     # Drop dupes, sometimes there are duplicate records emailed
-    # fiserv_df = fiserv_df.drop_duplicates(subset=["invoice_id"], keep="first")
+    fiserv_df = fiserv_df.drop_duplicates(subset=["id"], keep="first")
 
     return fiserv_df
 
