@@ -269,9 +269,9 @@ def to_postgres(smartfolio):
     )
     try:
         res = client.upsert(resource="flowbird_payments_raw", data=payload)
-    except:
-        logger.debug(client.res.text)
-        raise
+    except Exception as e:
+        logger.error(client.res.text)
+        raise e
 
 
 def main(args):

@@ -271,7 +271,11 @@ def to_postgres(smartfolio):
         headers={"Prefer": "return=representation"},
     )
 
-    res = client.upsert(resource="flowbird_transactions_raw", data=payload)
+    try:
+        res = client.upsert(resource="flowbird_transactions_raw", data=payload)
+    except Exception as e:
+        logger.error(client.res.text)
+        raise e
 
     # Send data to the combined transactions dataset
     smartfolio = smartfolio[
@@ -289,7 +293,11 @@ def to_postgres(smartfolio):
     smartfolio.loc[:, "source"] = "Parking Meters"
     payload = smartfolio.to_dict(orient="records")
 
-    res = client.upsert(resource="transactions", data=payload)
+    try:
+        res = client.upsert(resource="transactions", data=payload)
+    except Exception as e:
+        logger.error(client.res.text)
+        raise e
 
 
 def main(args):

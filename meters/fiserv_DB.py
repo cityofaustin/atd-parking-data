@@ -210,8 +210,9 @@ def transform(fiserv_df):
         ),
         axis=1,
     )
+
     # Drop dupes, sometimes there are duplicate records emailed
-    # fiserv_df = fiserv_df.drop_duplicates(subset=["invoice_id"], keep="first")
+    fiserv_df = fiserv_df.drop_duplicates(subset=["id"], keep="first")
 
     return fiserv_df
 
@@ -233,10 +234,10 @@ def to_postgres(fiserv_df):
 
     # Upsert to postgres DB
     try:
-        client.upsert(resource="fiserv_reports_raw", data=payload)
-    except:
-        logger.debug(client.res.text)
-        raise
+        res = client.upsert(resource="fiserv_reports_raw", data=payload)
+    except Exception as e:
+        logger.error(client.res.text)
+        raise e
 
 
 def main(args):

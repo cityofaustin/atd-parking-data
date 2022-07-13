@@ -190,9 +190,13 @@ def transform(passport):
 
 def to_postgres(df, client):
     # Upsert to database
-    payload = df.to_dict(orient="records")
 
-    res = client.upsert(resource="passport_transactions_raw", data=payload)
+    payload = df.to_dict(orient="records")
+    try:
+        res = client.upsert(resource="passport_transactions_raw", data=payload)
+    except Exception as e:
+        logger.error(client.res.text)
+        raise e
 
     df = df[
         [
@@ -209,8 +213,11 @@ def to_postgres(df, client):
     ]
 
     payload = df.to_dict(orient="records")
-
-    res = client.upsert(resource="transactions", data=payload)
+    try:
+        res = client.upsert(resource="transactions", data=payload)
+    except Exception as e:
+        logger.error(client.res.text)
+        raise e
 
     return res
 
