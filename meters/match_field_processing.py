@@ -155,10 +155,10 @@ def to_postgres(output, pstgrs):
     payload = output.to_dict(orient="records")
 
     try:
-        pstgrs.upsert(resource="fiserv_reports_raw", data=payload)
-    except:
-        logger.debug(pstgrs.res.text)
-        raise
+        res = pstgrs.upsert(resource="fiserv_reports_raw", data=payload)
+    except Exception as e:
+        logger.error(pstgrs.res.text)
+        raise e
 
 
 def main(args):

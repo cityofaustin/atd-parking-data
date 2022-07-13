@@ -234,10 +234,10 @@ def to_postgres(fiserv_df):
 
     # Upsert to postgres DB
     try:
-        client.upsert(resource="fiserv_reports_raw", data=payload)
-    except:
-        logger.debug(client.res.text)
-        raise
+        res = client.upsert(resource="fiserv_reports_raw", data=payload)
+    except Exception as e:
+        logger.error(client.res.text)
+        raise e
 
 
 def main(args):
