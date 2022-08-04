@@ -169,6 +169,10 @@ def transform(passport):
     # Ignore zones which were created for testing, they all contain AUS in the ID
     passport = passport[~passport["zone_id"].astype("str").str.contains("AUS")]
 
+    # Dropping duplicate transaction IDs, which can happen for some unexplained reason
+    # During testing, these looks like genuine dupes with same date/time/location
+    passport = passport.drop_duplicates(subset=["id"], keep="last")
+
     # Subset of columns for aligning schema
     passport = passport[
         [
