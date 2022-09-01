@@ -94,7 +94,8 @@ def get_csv_list(year, month, client):
 
     # Remove the first item, it is not needed
     # since it is just the name of the folder
-    csv_file_list.pop(0)
+    if csv_file_list:
+        csv_file_list.pop(0)
 
     # Finally return the final list
     return csv_file_list
