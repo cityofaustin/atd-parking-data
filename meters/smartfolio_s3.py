@@ -234,6 +234,8 @@ def transform(smartfolio):
         smartfolio["duration_min"].isna(), "timedelta"
     ]
 
+    smartfolio = smartfolio[smartfolio['transaction_type'] == "Parking"]
+
     # Only subset of columns needed for schema
     smartfolio = smartfolio[
         [

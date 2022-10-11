@@ -133,3 +133,9 @@ dmypy.json
 # Custom
 .DS_Store
 env_file
+meters/.idea/inspectionProfiles/profiles_settings.xml
+meters/.idea/meters.iml
+meters/.idea/misc.xml
+meters/.idea/modules.xml
+meters/.idea/vcs.xml
+meters/.idea/workspace.xml
