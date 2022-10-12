@@ -1,7 +1,7 @@
 # Standard Library i`ports
 import os
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 
 # Related third-party imports
@@ -37,8 +37,8 @@ def handle_date_args(start_string, end_string):
             tzinfo=timezone.utc
         )
     else:
-        # if not given set to January 1st, 2022
-        start_date = datetime(2022, 1, 1, 0, 0, 0, 0, timezone.utc)
+        # if not provided, search the last thirty days of data
+        start_date = datetime.now() - timedelta(30)
 
     if end_string:
         # parse CLI arg date
