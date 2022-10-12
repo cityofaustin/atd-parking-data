@@ -234,7 +234,8 @@ def transform(smartfolio):
         smartfolio["duration_min"].isna(), "timedelta"
     ]
 
-    smartfolio = smartfolio[smartfolio['transaction_type'] == "Parking"]
+    # If duration is still null, it is because it is a pool entry transaction and doesn't have a end time
+    smartfolio = smartfolio[~smartfolio["duration_min"].isna()]
 
     # Only subset of columns needed for schema
     smartfolio = smartfolio[
