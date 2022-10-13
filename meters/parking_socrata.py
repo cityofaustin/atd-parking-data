@@ -77,6 +77,43 @@ def handle_date_args(start_string, end_string):
     return start_date, end_date
 
 
+def chunks(lst, n):
+    """
+    Helper function for breaking large lists into chunks for uploading batches
+    Parameters
+    ----------
+    lst - a fairly long list that will be broken into chunks
+    n - length of the chunks that will be returned
+
+    Returns
+    -------
+    Generator that yields smaller lists of length n
+    """
+    for i in range(0, len(lst), n):
+        yield lst[i: i + n]
+
+
+def batch_upload(soda, dataset, response):
+    """
+    Uploads data to Socrata in batches if the length of our data is too large in order to avoid timeouts
+    Parameters
+    ----------
+    soda - SodaPy client object
+    dataset - The ID of the Socrata dataset to upload to
+    response - A list of dictionaries of data returned from the Postgres DB
+
+    Returns
+    None
+    -------
+
+    """
+    logger.debug(f"Data too large, uploading data in chunks to {dataset}")
+
+    for chunk in chunks(response, 1000):
+        logger.debug(f"Uploading chunk...")
+        soda.upsert(dataset, chunk)
+
+
 def fiserv(start, end, pstgrs, soda):
     """Queries the postgres database for Fiserv data and sends the response to Socrata.
     
@@ -102,7 +139,10 @@ def fiserv(start, end, pstgrs, soda):
 
     response = remove_forbidden_keys(response)
 
-    soda.upsert(FISERV_DATASET, response)
+    if len(response) > 10000:
+        batch_upload(soda, FISERV_DATASET, response)
+    else:
+        soda.upsert(FISERV_DATASET, response)
 
 
 def meters(start, end, pstgrs, soda):
@@ -129,7 +169,10 @@ def meters(start, end, pstgrs, soda):
 
     response = tzcleanup(response)
 
-    soda.upsert(METERS_DATASET, response)
+    if len(response) > 10000:
+        batch_upload(soda, METERS_DATASET, response)
+    else:
+        soda.upsert(METERS_DATASET, response)
 
 
 def payments(start, end, pstgrs, soda):
@@ -159,7 +202,10 @@ def payments(start, end, pstgrs, soda):
 
     response = remove_forbidden_keys(response)
 
-    soda.upsert(PAYMENTS_DATASET, response)
+    if len(response) > 10000:
+        batch_upload(soda, PAYMENTS_DATASET, response)
+    else:
+        soda.upsert(PAYMENTS_DATASET, response)
 
 
 def transactions(start, end, pstgrs, soda):
@@ -187,7 +233,10 @@ def transactions(start, end, pstgrs, soda):
 
     response = tzcleanup(response)
 
-    soda.upsert(TXNS_DATASET, response)
+    if len(response) > 10000:
+        batch_upload(soda, TXNS_DATASET, response)
+    else:
+        soda.upsert(TXNS_DATASET, response)
 
 
 def upsert_all(start, end, pstgrs, soda):
@@ -229,7 +278,6 @@ def remove_forbidden_keys(data):
 
 
 def main(args):
-
     ## Client objects
     # postgrest
     pstgrs = Postgrest(
@@ -238,9 +286,9 @@ def main(args):
         headers={"Prefer": "return=representation"},
     )
     # sodapy
-    soda = Socrata(SO_WEB, SO_TOKEN, username=SO_USER, password=SO_PASS, timeout=500,)
+    soda = Socrata(SO_WEB, SO_TOKEN, username=SO_USER, password=SO_PASS, timeout=500, )
 
-    # format date arugments
+    # format date arguments
     start_date, end_date = handle_date_args(args.start, args.end)
 
     # CLI argument logic
@@ -291,6 +339,5 @@ parser.add_argument(
 args = parser.parse_args()
 
 logger = utils.get_logger(__file__, level=logging.DEBUG)
-
 
 main(args)
