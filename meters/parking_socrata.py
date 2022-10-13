@@ -139,7 +139,7 @@ def fiserv(start, end, pstgrs, soda):
 
     response = remove_forbidden_keys(response)
 
-    if len(response) > 10000:
+    if len(response) > 1000:
         batch_upload(soda, FISERV_DATASET, response)
     else:
         soda.upsert(FISERV_DATASET, response)
@@ -169,7 +169,7 @@ def meters(start, end, pstgrs, soda):
 
     response = tzcleanup(response)
 
-    if len(response) > 10000:
+    if len(response) > 1000:
         batch_upload(soda, METERS_DATASET, response)
     else:
         soda.upsert(METERS_DATASET, response)
@@ -202,7 +202,7 @@ def payments(start, end, pstgrs, soda):
 
     response = remove_forbidden_keys(response)
 
-    if len(response) > 10000:
+    if len(response) > 1000:
         batch_upload(soda, PAYMENTS_DATASET, response)
     else:
         soda.upsert(PAYMENTS_DATASET, response)
@@ -233,7 +233,7 @@ def transactions(start, end, pstgrs, soda):
 
     response = tzcleanup(response)
 
-    if len(response) > 10000:
+    if len(response) > 1000:
         batch_upload(soda, TXNS_DATASET, response)
     else:
         soda.upsert(TXNS_DATASET, response)
