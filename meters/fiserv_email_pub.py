@@ -7,10 +7,10 @@ import logging
 # Related third party imports
 import boto3
 import mailparser
-from dotenv import load_dotenv
+import pandas as pd
 
 import utils
-
+from io import StringIO
 
 # Envrioment variables
 
@@ -68,29 +68,36 @@ def format_file_name(emailObject):
     Returns a file name + path for each csv file based on the email send date
     :return: string
     """
-    date_email = (
-        str(emailObject.date.month)
-        + "-"
-        + str(emailObject.date.day)
-        + "-"
-        + emailObject.attachments[0]["filename"].replace(" ", "-")
-    )
 
     file_name = (
-        "emails/processed/"
+        "emails/current_processed/"
         + str(emailObject.date.year)
         + "/"
         + str(emailObject.date.month)
         + "/"
-        + date_email
+        + emailObject.attachments[0]["filename"].replace(" ", "-")
     )
 
     return file_name
 
 
+def df_to_s3(df, resource, filename):
+    """
+    Send pandas dataframe to an S3 bucket as a CSV
+    h/t https://stackoverflow.com/questions/38154040/save-dataframe-to-csv-directly-to-s3-python
+    Parameters
+    ----------
+    df : Pandas Dataframe
+    resource : boto3 s3 resource
+    filename : String of the file that will be created in the S3 bucket ex:
+    """
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer, index=False)
+    resource.Object(BUCKET_NAME, filename).put(Body=csv_buffer.getvalue())
+
+
 def main():
     # Initialize AWS clients
-
     aws_s3_client = boto3.client(
         "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
     )
@@ -119,7 +126,7 @@ def main():
             # email must be from Fiserv
             if (
                 len(emailObject.attachments) > 0
-                and emailObject.headers["Return-Path"] == FSRV_EMAIL
+                and emailObject.headers["From"] == FSRV_EMAIL
             ):
 
                 logger.debug(f"Loaded Email File: {email_file}")
@@ -127,17 +134,15 @@ def main():
                 # Create a file name and path for the email
                 file_name = format_file_name(emailObject)
 
-                # Decoding the email attachments
-                message_bytes = base64.b64decode(emailObject.attachments[0]["payload"])
-                message_decoded = message_bytes.decode("utf-16")
+                # Parse attachment contents
+                csv_string_io = StringIO(emailObject.attachments[0]["payload"])
+                df = pd.read_csv(csv_string_io)
 
                 # Uploading CSV to S3
-                upload = s3.Object(BUCKET_NAME, file_name)
-                upload.put(Body=message_decoded)
-
+                df_to_s3(df, s3, file_name)
                 logger.debug(f"Uploaded file: {file_name}")
 
-                # Removes the file from processed folderpp
+                # Removes the file from processed folder
                 s3.Object(BUCKET_NAME, email_file).delete()
 
     else:
