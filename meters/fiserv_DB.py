@@ -185,9 +185,13 @@ def transform(fiserv_df):
         axis=1,
     )
 
+    # Subtract one day from our submit date column
+    # This is to align old Fiserv email reports with the new ones
+    fiserv_df['submit_date'] = pd.to_datetime(fiserv_df['submit_date']) - pd.Timedelta(1, unit='D')
+    fiserv_df['submit_date'] = fiserv_df['submit_date'].dt.strftime("%m/%d/%Y")
+
     # Drop dupes, sometimes there are duplicate records emailed
     fiserv_df = fiserv_df.drop_duplicates(subset=["id"], keep="first")
-
     return fiserv_df
 
 
