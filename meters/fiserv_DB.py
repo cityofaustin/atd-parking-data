@@ -14,7 +14,9 @@ from dotenv import load_dotenv
 
 import utils
 
-# Envrioment variables
+from config.fiserv import FIELD_MAPPING, REQUIRED_FIELDS
+
+# Environment variables
 
 AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
 AWS_PASS = os.getenv("AWS_PASS")
@@ -110,7 +112,8 @@ def aws_list_files(year, month, client):
     :return: object
     """
     response = client.list_objects(
-        Bucket=BUCKET_NAME, Prefix="emails/processed/" + str(year) + "/" + str(month),
+        Bucket=BUCKET_NAME,
+        Prefix="emails/current_processed/" + str(year) + "/" + str(month),
     )
 
     for content in response.get("Contents", []):
@@ -121,10 +124,10 @@ def match_field_creation(card_num, invoice_id):
     """
     Returns a field for matching between Fiserv and Smartfolio
     It is defined as a concatenation of the Credit Card number and the invoice ID
-    
+
     :return: String
     """
-    card_num = card_num.replace("*", "x")
+    card_num = card_num.replace("X", "x")
     return card_num + "-" + str(invoice_id)
 
 
@@ -132,7 +135,7 @@ def id_field_creation(invoice_id, batch_number, sequence_number):
     """
     Returns a field for matching between Fiserv and Smartfolio
     It is defined as a concatenation of the Credit Card number and the invoice ID
-    
+
     :return: str
     """
 
@@ -147,45 +150,18 @@ def transform(fiserv_df):
     Args: dataframe of data from fiserv report csv
     Returns: formatted dataframe to conform to postgres schema
     """
-    fiserv_df = fiserv_df[
-        [
-            "Invoice Number",
-            "Cardholder Number",
-            "Transaction Date",
-            "Transaction Type",
-            "Terminal ID",
-            "Batch Number",
-            "Batch Sequence Number",
-            "Submit Date",
-            "Funded Date",
-            "Processed Transaction Amount",
-            "Transaction Status",
-            "Location ID",
-        ]
-    ]
+    for field in REQUIRED_FIELDS:
+        assert field in list(
+            fiserv_df.columns
+        ), "Incorrect report supplied. Check required fields."
+
+    fiserv_df = fiserv_df[REQUIRED_FIELDS]
 
     # Renaming columns to match schema
-    fiserv_df = fiserv_df.rename(
-        columns={
-            "Invoice Number": "invoice_id",
-            "Cardholder Number": "match_field",
-            "Transaction Date": "transaction_date",
-            "Transaction Type": "transaction_type",
-            "Terminal ID": "meter_id",
-            "Batch Number": "batch_number",
-            "Batch Sequence Number": "batch_sequence_number",
-            "Submit Date": "submit_date",
-            "Funded Date": "funded_date",
-            "Processed Transaction Amount": "amount",
-            "Transaction Status": "transaction_status",
-            "Location ID": "account",
-        }
-    )
+    fiserv_df = fiserv_df.rename(columns=FIELD_MAPPING)
 
     # Account number field is only the last three digits of the account number
     fiserv_df["account"] = fiserv_df["account"].astype(str).str[-3:].astype(int)
-
-    params = {"select": "invoice_id", "order": "invoice_id"}
 
     # funded date is assumed to be transaction_date
     fiserv_df["funded_date"] = fiserv_df["transaction_date"]
@@ -211,9 +187,15 @@ def transform(fiserv_df):
         axis=1,
     )
 
+    # Subtract one day from our submit date column
+    # This is to align old Fiserv email reports with the new ones
+    fiserv_df["submit_date"] = pd.to_datetime(fiserv_df["submit_date"]) - pd.Timedelta(
+        1, unit="D"
+    )
+    fiserv_df["submit_date"] = fiserv_df["submit_date"].dt.strftime("%m/%d/%Y")
+
     # Drop dupes, sometimes there are duplicate records emailed
     fiserv_df = fiserv_df.drop_duplicates(subset=["id"], keep="first")
-
     return fiserv_df
 
 
@@ -241,9 +223,10 @@ def to_postgres(fiserv_df):
 
 
 def main(args):
-
     aws_s3_client = boto3.client(
-        "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
+        "s3",
+        aws_access_key_id=AWS_ACCESS_ID,
+        aws_secret_access_key=AWS_PASS,
     )
 
     csv_file_list = handle_year_month_args(
@@ -252,12 +235,13 @@ def main(args):
 
     if len(csv_file_list) == 0:
         logger.debug("No Files found for selected months, nothing happened.")
+        return 0
 
     # Access the files from S3 and place them into a dataframe
     for csv_f in csv_file_list:
         # Parse the file
         response = aws_s3_client.get_object(Bucket=BUCKET_NAME, Key=csv_f)
-        df = pd.read_csv(response.get("Body"), sep="\t")
+        df = pd.read_csv(response.get("Body"))
 
         logger.debug(f"Loaded CSV File: {csv_f}")
         # Ignore the emails which send a CSV with only column headers
@@ -271,11 +255,15 @@ def main(args):
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--year", type=int, help=f"Year of folder to select, defaults to current year",
+    "--year",
+    type=int,
+    help=f"Year of folder to select, defaults to current year",
 )
 
 parser.add_argument(
-    "--month", type=int, help=f"Month of folder to select. defaults to current month",
+    "--month",
+    type=int,
+    help=f"Month of folder to select. defaults to current month",
 )
 
 parser.add_argument(

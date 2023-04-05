@@ -180,6 +180,11 @@ def main(args):
     fiserv = datetime_handling(fiserv)
     payments = datetime_handling(payments)
 
+    # Removing the censored characters (x's) from our string match field
+    # AMEX transactions were having an additional x in Fiserv versus Flowbird
+    fiserv['match_field'] = fiserv['match_field'].str.replace('x', '')
+    payments['match_field'] = payments['match_field'].str.replace('x', '')
+
     # Merge the two datasets first based on the match_field column.
     # If there are multiple matches (dupes),
     # then match based on the closest transaction_date.

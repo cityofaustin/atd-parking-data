@@ -6,7 +6,7 @@ Fetch Flowbird meter transactions and load to S3. This processes the "txn_histor
 
 One file is generated per day in the provided range and uploaded to S3 at: `<bucket-name>/meters/<environment>/transaction_history/year/month/<query-start-date>.csv`
 
-### Environmental variables
+### Environment variables
 
 - `USER`: Dr-direct username
 - `PASSWORD`: Dr-Direct password
@@ -55,22 +55,13 @@ The `--env` controls the S3 file path and defaults to `dev`.
 $ python txn_history.py --env prod
 ```
 
-### Docker
-
-A Github action is configured to build/push this subdirectory to DTS docker hub with image name `atd-parking-data-meters`.
-
-Here's a sample command to run the transaction history upload with an environment file.
-
-```bash
-docker run --rm -it --env-file env_file atddocker/atd-parking-data-meters python txn_history.py -v --start 2021-12-08 --end 2021-12-09
-```
-
+***
 
 ## smartfolio_s3.py
 
 This script takes the CSVs extracted from DR-Direct `transaction_history` table (which are stored in an S3 bucket) and stores them locally into two postgres databases.
 
-### Environmental variables
+### Environment variables
 
 - `AWS_ACCESS_ID`: AWS access key with write permissions on bucket
 - `AWS_PASS`: AWS access key secret
@@ -105,12 +96,14 @@ $ python smartfolio_s3.py --year 2021 --month 6
 
 `transactions` - A combined parking database that includes data from parking meters but also app purchases (Passport is the vendor).
 
+***
+
 ## payments_s3.py
 
 This script takes the CSVs extracted from DR-Direct credit card payment supervision (`archipel_transactionspub`) table (which are stored in an S3 bucket) and stores them in a postgres database. It is similar to the above `smartfolio_s3.py` but there are different data processing steps and is stored in a separate databse used for financial reporting.
 
 
-### Environmental variables
+### Environment variables
 
 - `AWS_ACCESS_ID`: AWS access key with write permissions on bucket
 - `AWS_PASS`: AWS access key secret
@@ -145,6 +138,8 @@ $ python payments_s3.py --year 2021 --month 6
 `flowbird_payments_raw` - Where the credit card payment supervision table is stored in postgres.
 
 
+***
+
 # Fiserv Email publishing
 
 Three daily emails are scheduled to arrive at a S3 email address with processed credit card payments data for Austin's parking transactions. 
@@ -154,7 +149,8 @@ fiserv_email_pub.py takes the emails which are stored in S3 and parses out the a
 ## S3 Folder layout:
 ```
 -> emails (received emails arrive here)
-	-> processed (processed csv files placed here)
+	-> current_processed (processed csv files placed here)
+	-> processed (legacy processed files were placed here)
 	-> archive (old emails are moved to here)
    ```
 
@@ -162,13 +158,14 @@ fiserv_email_pub.py takes the emails which are stored in S3 and parses out the a
 
 Take the processed email attachments stored in S3 and upsert them to a postgres DB.
 
-### Environmental variables
+### Environment variables
 
 - `POSTGREST_TOKEN`: Token secret used by postgREST client
 - `ENDPOINT`: Dr-Direct service endpoint
 - `BUCKET_NAME`: S3 bucket name
 - `AWS_ACCESS_ID`: AWS access key with write permissions on bucket
 - `AWS_PASS`: AWS access key secret
+- `FSRV_EMAIL`: The email address of the automated emails that are delivered by Fiserv 
 
 ### CLI Arguments:
 
@@ -200,7 +197,7 @@ $ python fiserv_DB.py --year 2021 --month 6
 ## match_field_processing.py
 This script looks at the `fiserv_reports_raw` and `flowbird_payments_raw` databases and checks for matches in the field called `match_field`. It then updates the `fiserv_reports_raw` table with the unique ID of the flowbird payment (`flowbird_id`). 
 
-### Environmental variables
+### Environment variables
 
 - `POSTGREST_TOKEN`: Token secret used by postgREST client
 
@@ -228,17 +225,19 @@ Update `flowbird_id` based on all flowbird records updated between March 11th, 2
 $ python match_field_processing.py --start 2022-03-11 --end 2022-12-01
 ```
 
+***
+
 ## parking_socrata.py
 This script will publish any or all of the four different Socrata datasets for defined for parking tranasctions. They are stored locally in a postgres database.
 
-### Postgres Tables involved
+### Postgres Tables
 
 `transactions` - Combined passport and flowbird (AKA smartfolio) vendor parking data. This will represent the comprehensive Austin parking dataset.
 `flowbird_transactions_raw` - Flowbird parking transactions
 `flowbird_payments_raw` - Where the credit card payment supervision table is stored in postgres. AKA: `archipel_transactionspub`
 `fiserv_reports_raw` - Merchant processor for Flowbird. These are should match the processed payments in `flowbird_payments_raw`.  
 
-### Socrata Datasets involved
+### Socrata Datasets
 Also defined as envriomential variables.
 (Socrata dataset) -> (postgrest table)
 
@@ -247,7 +246,7 @@ Also defined as envriomential variables.
 -  `PAYMENTS_DATASET` ->   `flowbird_payments_raw`
 -  `FISERV_DATASET`   ->   `fiserv_reports_raw`
 
-### Environmental variables
+### Environment variables
 
 - `POSTGREST_TOKEN`: Postgrest token secret
 - `SO_WEB`: URL of socrata that is being published to such as: `data.austintexas.gov`
@@ -281,4 +280,16 @@ $ python parking_socrata.py --dataset transactions -- start 2021-01-01
 Upsert data to Socrata for only the transactions dataset for data that has been updated between January 1st 2021 and July 1st 2021 (UTC).
 ```shell
 $ python parking_socrata.py --dataset transactions -- start 2021-01-01 --end 2021-07-01
+```
+
+***
+
+### Docker
+
+A Github action is configured to build/push this subdirectory to DTS docker hub with image name `atd-parking-data-meters`.
+
+Here's a sample command to run the transaction history upload with an environment file.
+
+```bash
+docker run --rm -it --env-file env_file atddocker/atd-parking-data-meters python txn_history.py -v --start 2021-12-08 --end 2021-12-09
 ```
