@@ -21,7 +21,7 @@ FIELD_MAPPING = {
     "Terminal ID": "meter_id",
     "Batch No.": "batch_number",
     "Batch Sequence ID": "batch_sequence_number",
-    "Funded Date": "submit_date",
+    "Funded Date": "submit_date",  # These look wrong, but this is indeed correct
     "Record Date": "funded_date",
     "Processed Sales Amount": "amount",
     "Transaction Status": "transaction_status",

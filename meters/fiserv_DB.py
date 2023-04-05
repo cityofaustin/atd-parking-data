@@ -124,7 +124,7 @@ def match_field_creation(card_num, invoice_id):
     """
     Returns a field for matching between Fiserv and Smartfolio
     It is defined as a concatenation of the Credit Card number and the invoice ID
-    
+
     :return: String
     """
     card_num = card_num.replace("X", "x")
@@ -135,7 +135,7 @@ def id_field_creation(invoice_id, batch_number, sequence_number):
     """
     Returns a field for matching between Fiserv and Smartfolio
     It is defined as a concatenation of the Credit Card number and the invoice ID
-    
+
     :return: str
     """
 
@@ -151,7 +151,9 @@ def transform(fiserv_df):
     Returns: formatted dataframe to conform to postgres schema
     """
     for field in REQUIRED_FIELDS:
-        assert field in list(fiserv_df.columns)
+        assert field in list(
+            fiserv_df.columns
+        ), "Incorrect report supplied. Check required fields."
 
     fiserv_df = fiserv_df[REQUIRED_FIELDS]
 
@@ -187,8 +189,10 @@ def transform(fiserv_df):
 
     # Subtract one day from our submit date column
     # This is to align old Fiserv email reports with the new ones
-    fiserv_df['submit_date'] = pd.to_datetime(fiserv_df['submit_date']) - pd.Timedelta(1, unit='D')
-    fiserv_df['submit_date'] = fiserv_df['submit_date'].dt.strftime("%m/%d/%Y")
+    fiserv_df["submit_date"] = pd.to_datetime(fiserv_df["submit_date"]) - pd.Timedelta(
+        1, unit="D"
+    )
+    fiserv_df["submit_date"] = fiserv_df["submit_date"].dt.strftime("%m/%d/%Y")
 
     # Drop dupes, sometimes there are duplicate records emailed
     fiserv_df = fiserv_df.drop_duplicates(subset=["id"], keep="first")
@@ -219,9 +223,10 @@ def to_postgres(fiserv_df):
 
 
 def main(args):
-
     aws_s3_client = boto3.client(
-        "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
+        "s3",
+        aws_access_key_id=AWS_ACCESS_ID,
+        aws_secret_access_key=AWS_PASS,
     )
 
     csv_file_list = handle_year_month_args(
@@ -250,11 +255,15 @@ def main(args):
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--year", type=int, help=f"Year of folder to select, defaults to current year",
+    "--year",
+    type=int,
+    help=f"Year of folder to select, defaults to current year",
 )
 
 parser.add_argument(
-    "--month", type=int, help=f"Month of folder to select. defaults to current month",
+    "--month",
+    type=int,
+    help=f"Month of folder to select. defaults to current month",
 )
 
 parser.add_argument(
