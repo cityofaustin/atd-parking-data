@@ -28,6 +28,13 @@ METERS_DATASET = os.getenv("METERS_DATASET")
 PAYMENTS_DATASET = os.getenv("PAYMENTS_DATASET")
 TXNS_DATASET = os.getenv("TXNS_DATASET")
 
+DATASETS = {
+    "fiserv_reports_raw": FISERV_DATASET,
+    "flowbird_transactions_raw": METERS_DATASET,
+    "flowbird_payments_raw": PAYMENTS_DATASET,
+    "transactions": TXNS_DATASET,
+}
+
 
 def tzcleanup(data):
     """Removes timezone from a postgres datetime field for upload to socrata.
@@ -77,184 +84,43 @@ def handle_date_args(start_string, end_string):
     return start_date, end_date
 
 
-def chunks(lst, n):
+def batch_upload(start, end, pstgrs, soda, table):
     """
-    Helper function for breaking large lists into chunks for uploading batches
+    Uploads data to Socrata in batches of 1,000 records.
     Parameters
     ----------
-    lst - a fairly long list that will be broken into chunks
-    n - length of the chunks that will be returned
-
-    Returns
-    -------
-    Generator that yields smaller lists of length n
-    """
-    for i in range(0, len(lst), n):
-        yield lst[i: i + n]
-
-
-def batch_upload(soda, dataset, response):
-    """
-    Uploads data to Socrata in batches if the length of our data is too large in order to avoid timeouts
-    Parameters
-    ----------
-    soda - SodaPy client object
-    dataset - The ID of the Socrata dataset to upload to
-    response - A list of dictionaries of data returned from the Postgres DB
+    start (string): Inclusive date (UTC) of earliest records to be uploaded (updated_at)
+    end (string): Inclusive date (UTC) of latest records to be uploaded (updated_at)
+    pstgrs: Postgrest client object
+    soda: SodaPy client object
+    table (string): The name of the table in postgres we are uploading
 
     Returns
     None
     -------
 
     """
-    logger.debug(f"Data too large, uploading data in chunks to {dataset}")
-
-    for chunk in chunks(response, 1000):
-        logger.debug(f"Uploading chunk...")
-        soda.upsert(dataset, chunk)
-
-
-def fiserv(start, end, pstgrs, soda):
-    """Queries the postgres database for Fiserv data and sends the response to Socrata.
-    
-    Args:
-        start (string): Inclusive date (UTC) of earliest records to be uploaded
-        end (string): Inclusive date (UTC) of latest records to be uploaded
-        postgrest and sodapy client objects
-    
-    Returns:
-        none
-    """
-    logger.debug(f"Publishing Fiserv data to Socrata from {start} to {end}")
-
-    params = {
-        "select": "*",
-        "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
-        "order": "invoice_id",
-    }
-
-    response = pstgrs.select(resource="fiserv_reports_raw", params=params)
-
-    response = tzcleanup(response)
-
-    response = remove_forbidden_keys(response)
-
-    if len(response) > 1000:
-        batch_upload(soda, FISERV_DATASET, response)
-    else:
-        soda.upsert(FISERV_DATASET, response)
-
-
-def meters(start, end, pstgrs, soda):
-    """Queries the postgres database for parking meter (smartfolio) data,
-        and sends the response to Socrata.
-    
-    Args:
-        start (string): Inclusive date (UTC) of earliest records to be uploaded
-        end (string): Inclusive date (UTC) of latest records to be uploaded
-        postgrest and sodapy client objects
-    
-    Returns:
-        none
-    """
-    logger.debug(f"Publishing parking meter data to Socrata from {start} to {end}")
-
-    params = {
-        "select": "*",
-        "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
-        "order": "id",
-    }
-
-    response = pstgrs.select(resource="flowbird_transactions_raw", params=params)
-
-    response = tzcleanup(response)
-
-    if len(response) > 1000:
-        batch_upload(soda, METERS_DATASET, response)
-    else:
-        soda.upsert(METERS_DATASET, response)
-
-
-def payments(start, end, pstgrs, soda):
-    """Queries the postgres database for parking meter credit card payment (smartfolio) data,
-        and sends the response to Socrata.
-    
-    Args:
-        start (string): Inclusive date (UTC) of earliest records to be uploaded
-        end (string): Inclusive date (UTC) of latest records to be uploaded
-        postgrest and sodapy client objects
-    
-    Returns:
-        none
-    """
-    logger.debug(
-        f"Publishing parking meter payment data to Socrata from {start} to {end}"
-    )
-    params = {
-        "select": "*",
-        "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
-        "order": "invoice_id",
-    }
-
-    response = pstgrs.select(resource="flowbird_payments_raw", params=params)
-
-    response = tzcleanup(response)
-
-    response = remove_forbidden_keys(response)
-
-    if len(response) > 1000:
-        batch_upload(soda, PAYMENTS_DATASET, response)
-    else:
-        soda.upsert(PAYMENTS_DATASET, response)
-
-
-def transactions(start, end, pstgrs, soda):
-    """Queries the postgres database for the combined parking transaction data (passport + smartfolio),
-        and sends the response to Socrata.
-    
-    Args:
-        start (string): Inclusive date (UTC) of earliest records to be uploaded
-        end (string): Inclusive date (UTC) of latest records to be uploaded
-        postgrest and sodapy client objects
-    
-    Returns:
-        none
-    """
-    logger.debug(
-        f"Publishing parking transaction data to Socrata from {start} to {end}"
-    )
-    params = {
-        "select": "*",
-        "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
-        "order": "id",
-    }
-
-    response = pstgrs.select(resource="transactions", params=params)
-
-    response = tzcleanup(response)
-
-    if len(response) > 1000:
-        batch_upload(soda, TXNS_DATASET, response)
-    else:
-        soda.upsert(TXNS_DATASET, response)
-
-
-def upsert_all(start, end, pstgrs, soda):
-    """Runs all four dataset publishing functions
-    
-    Args:
-        start (string): Inclusive date (UTC) of earliest records to be uploaded
-        end (string): Inclusive date (UTC) of latest records to be uploaded
-        postgrest and sodapy client objects
-    
-    Returns:
-        none
-    """
-
-    fiserv(start, end, pstgrs, soda)
-    meters(start, end, pstgrs, soda)
-    payments(start, end, pstgrs, soda)
-    transactions(start, end, pstgrs, soda)
+    logger.debug(f"Publishing table: {table} to Socrata from {start} to {end}")
+    paginate = True
+    offset = 0
+    while paginate:
+        params = {
+            "select": "*",
+            "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
+            "order": "invoice_id",
+            "limit": 1000,
+            "offset": offset,
+        }
+        offset += 1000
+        response = pstgrs.select(resource=table, params=params, pagination=True)
+        if len(response) == 0:
+            paginate = False
+        else:
+            response = tzcleanup(response)
+            response = remove_forbidden_keys(response)
+            if offset / 1000 % 10 == 0:
+                logger.debug(f"Uploading chunks: {offset} records so far")
+            soda.upsert(DATASETS[table], response)
 
 
 def remove_forbidden_keys(data):
@@ -264,7 +130,7 @@ def remove_forbidden_keys(data):
         data (list): A list of dictionaries, one per transactions
 
     Returns:
-        list: A list of dictionariess, one per transaction, with forbidden keys removed
+        list: A list of dictionaries, one per transaction, with forbidden keys removed
     """
 
     # There are different forbidden keys based on the report requested
@@ -286,7 +152,7 @@ def main(args):
         headers={"Prefer": "return=representation"},
     )
     # sodapy
-    soda = Socrata(SO_WEB, SO_TOKEN, username=SO_USER, password=SO_PASS, timeout=500, )
+    soda = Socrata(SO_WEB, SO_TOKEN, username=SO_USER, password=SO_PASS, timeout=500,)
 
     # format date arguments
     start_date, end_date = handle_date_args(args.start, args.end)
@@ -294,23 +160,33 @@ def main(args):
     # CLI argument logic
     if args.dataset:
         if args.dataset == "fiserv":
-            fiserv(start_date, end_date, pstgrs, soda)
+            batch_upload(start_date, end_date, pstgrs, soda, "fiserv_reports_raw")
 
         if args.dataset == "meters":
-            meters(start_date, end_date, pstgrs, soda)
+            batch_upload(
+                start_date, end_date, pstgrs, soda, "flowbird_transactions_raw"
+            )
 
         if args.dataset == "payments":
-            payments(start_date, end_date, pstgrs, soda)
+            batch_upload(start_date, end_date, pstgrs, soda, "flowbird_payments_raw")
 
         if args.dataset == "transactions":
-            transactions(start_date, end_date, pstgrs, soda)
+            batch_upload(start_date, end_date, pstgrs, soda, "transactions")
 
         if args.dataset == "all":
-            upsert_all(start_date, end_date, pstgrs, soda)
+            batch_upload(start_date, end_date, pstgrs, soda, "fiserv_reports_raw")
+            batch_upload(
+                start_date, end_date, pstgrs, soda, "flowbird_transactions_raw"
+            )
+            batch_upload(start_date, end_date, pstgrs, soda, "flowbird_payments_raw")
+            batch_upload(start_date, end_date, pstgrs, soda, "transactions")
 
     # If no dataset argument then publish all
     else:
-        upsert_all(start_date, end_date, pstgrs, soda)
+        batch_upload(start_date, end_date, pstgrs, soda, "fiserv_reports_raw")
+        batch_upload(start_date, end_date, pstgrs, soda, "flowbird_transactions_raw")
+        batch_upload(start_date, end_date, pstgrs, soda, "flowbird_payments_raw")
+        batch_upload(start_date, end_date, pstgrs, soda, "transactions")
 
 
 # CLI arguments definition
