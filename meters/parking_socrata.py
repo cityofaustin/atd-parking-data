@@ -107,7 +107,7 @@ def batch_upload(start, end, pstgrs, soda, table):
         params = {
             "select": "*",
             "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
-            "order": "invoice_id",
+            "order": "id",
             "limit": 10000,
             "offset": offset,
         }
