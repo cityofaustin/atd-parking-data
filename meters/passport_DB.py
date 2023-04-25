@@ -9,6 +9,7 @@ import pandas as pd
 import boto3
 
 import utils
+from config.location_names import APP_LOCATION_NAMES
 
 AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
 AWS_PASS = os.getenv("AWS_PASS")
@@ -105,6 +106,12 @@ def aws_list_files(year, month, client):
     for content in response.get("Contents", []):
         yield content.get("Key")
 
+def create_location_name(row):
+    id = row["zone_id"]
+    for id_range in APP_LOCATION_NAMES:
+        if id in id_range:
+            return APP_LOCATION_NAMES[id_range]
+    return "Unknown Location"
 
 def transform(passport):
     # Add "passport" to clarify where how the transaction was completed
@@ -173,6 +180,9 @@ def transform(passport):
     # During testing, these looks like genuine dupes with same date/time/location
     passport = passport.drop_duplicates(subset=["id"], keep="last")
 
+    # Get location names based on the meter ID
+    passport["location_name"] = passport.apply(create_location_name, axis=1)
+
     # Subset of columns for aligning schema
     passport = passport[
         [
@@ -186,6 +196,7 @@ def transform(passport):
             "amount",
             "net_revenue",
             "source",
+            "location_name",
         ]
     ]
 
@@ -213,6 +224,7 @@ def to_postgres(df, client):
             "end_time",
             "amount",
             "source",
+            "location_name",
         ]
     ]
 
