@@ -183,6 +183,9 @@ def transform(passport):
     # Get location names based on the meter ID
     passport["location_name"] = passport.apply(create_location_name, axis=1)
 
+    # Ignore test zone
+    passport = passport[passport["zone_id"] != 101]
+    
     # Subset of columns for aligning schema
     passport = passport[
         [
