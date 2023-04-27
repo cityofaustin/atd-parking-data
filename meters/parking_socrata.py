@@ -108,17 +108,18 @@ def batch_upload(start, end, pstgrs, soda, table):
             "select": "*",
             "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
             "order": "id",
-            "limit": 10000,
+            "limit": 1000,
             "offset": offset,
         }
-        offset += 10000
+        offset += 1000
         response = pstgrs.select(resource=table, params=params, pagination=True)
         if len(response) == 0:
             paginate = False
         else:
             response = tzcleanup(response)
             response = remove_forbidden_keys(response)
-            logger.debug(f"Uploading chunks: {offset} records so far")
+            if offset % 10000 == 0:
+                logger.debug(f"Uploading chunks: {offset} records so far")
             soda.upsert(DATASETS[table], response)
 
 
