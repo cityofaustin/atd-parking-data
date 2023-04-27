@@ -54,7 +54,7 @@ APP_LOCATION_NAMES = {
     range(39025, 39026 + 1): "Silicon and Titanium",
     range(39100, 39399 + 1): "Core",
     range(39400, 39559 + 1): "Non-Core",
-    range(39588, 39592 + 1): "Non-Core",
+    range(39588, 39599 + 1): "Non-Core",
     range(39560, 39570 + 1): "Toomey",
     range(39573, 39587 + 1): "Rainey",
     range(39600, 39699 + 1): "West Campus",
