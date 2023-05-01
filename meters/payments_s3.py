@@ -11,7 +11,7 @@ import boto3
 from dotenv import load_dotenv
 
 import utils
-
+from config.location_names import METER_LOCATION_NAMES
 # Envrioment variables
 
 AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
@@ -167,6 +167,13 @@ def match_field_creation(card_num, invoice_id):
     return card_num + "-" + str(invoice_id)
 
 
+def create_location_name(row):
+    id = row["meter_id"]
+    for id_range in METER_LOCATION_NAMES:
+        if id in id_range:
+            return METER_LOCATION_NAMES[id_range]
+    return "Unknown Location"
+
 def transform(smartfolio):
     """Formats and adds/drops columns of a dataframe from smartfolio to conform 
         to postgres DB schema.
@@ -227,6 +234,8 @@ def transform(smartfolio):
     smartfolio["match_field"] = smartfolio.apply(
         lambda x: match_field_creation(x["match_field"], x["invoice_id"]), axis=1
     )
+    # Get location names based on the meter ID
+    smartfolio["location_name"] = smartfolio.apply(create_location_name, axis=1)
 
     # Payload to DB
     smartfolio = smartfolio[
@@ -242,6 +251,7 @@ def transform(smartfolio):
             "remittance_status",
             "processed_date",
             "amount",
+            "location_name",
         ]
     ]
 

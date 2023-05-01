@@ -10,6 +10,7 @@ import boto3
 from dotenv import load_dotenv
 
 import utils
+from config.location_names import METER_LOCATION_NAMES
 
 # Envrioment variables
 
@@ -157,6 +158,12 @@ def postgres_datetime(time_field):
     )
     return str(output)
 
+def create_location_name(row):
+    id = row["meter_id"]
+    for id_range in METER_LOCATION_NAMES:
+        if id in id_range:
+            return METER_LOCATION_NAMES[id_range]
+    return "Unknown Location"
 
 def transform(smartfolio):
     """Formats and adds/drops columns of a dataframe from smartfolio to conform 
@@ -220,6 +227,9 @@ def transform(smartfolio):
     # If duration is null, it is because it is a pool entry transaction and doesn't have an end time
     smartfolio = smartfolio[~smartfolio["duration_min"].isna()]
 
+    # Get location names based on the meter ID
+    smartfolio["location_name"] = smartfolio.apply(create_location_name, axis=1)
+
     # Only subset of columns needed for schema
     smartfolio = smartfolio[
         [
@@ -233,6 +243,7 @@ def transform(smartfolio):
             "start_time",
             "end_time",
             "amount",
+            "location_name",
         ]
     ]
 
@@ -274,10 +285,11 @@ def to_postgres(smartfolio):
             "start_time",
             "end_time",
             "amount",
+            "location_name",
         ]
     ]
 
-    smartfolio.loc[:, "source"] = "Parking Meters"
+    smartfolio["source"] = "Parking Meters"
     payload = smartfolio.to_dict(orient="records")
 
     try:
