@@ -35,6 +35,7 @@ METER_LOCATION_NAMES = {
     range(81002106, 81002107 + 1): "Emma",
     range(81002123, 81002123 + 1): "Garrison Pool",
     range(81002125, 81002125 + 1): "Hancock Golf Course",
+    range(81002126, 81002134 + 1): "Barton Springs Pool",  # New kiosks for 2023
     range(81002124, 81002124 + 1): "Northwest Pool",
     range(81002108, 81002110 + 1): "Walter",
     range(82002201, 82002299 + 1): "Zilker",
