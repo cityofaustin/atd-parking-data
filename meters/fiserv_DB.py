@@ -97,11 +97,6 @@ def get_csv_list(year, month, client):
     for csv_file in pending_csv_list:
         csv_file_list.append(csv_file)
 
-    # Remove the first item, it is not needed
-    # since it is just the name of the folder
-    if len(csv_file_list) > 0:
-        csv_file_list.pop(0)
-
     # Finally return the final list
     return csv_file_list
 
