@@ -10,6 +10,7 @@ PASSPORT_CLIENT_SECRET = os.getenv("PASSPORT_CLIENT_SECRET")
 PASSPORT_OPERATOR_ID = os.getenv("PASSPORT_OPERATOR_ID")
 PASSPORT_AUTH_ENDPOINT = os.getenv("PASSPORT_AUTH_ENDPOINT")
 PASSPORT_ENFORCEMENT_ENDPOINT = os.getenv("PASSPORT_ENFORCEMENT_ENDPOINT")
+PASSPORT_ZONES_ENDPOINT = os.getenv("PASSPORT_ZONES_ENDPOINT")
 SO_TOKEN = os.getenv("SO_TOKEN")
 SO_USER = os.getenv("SO_USER")
 SO_PASS = os.getenv("SO_PASS")
@@ -29,6 +30,15 @@ def get_bearer_token():
         return token_response.text
 
 
+def get_license_plate_records(bearer_token):
+    parking_rights_url = PASSPORT_ENFORCEMENT_ENDPOINT
+    passport_headers = {"Authorization": f"Bearer {bearer_token}"}
+    passport_params = {"operator_id": PASSPORT_OPERATOR_ID}
+    passport_response = requests.get(parking_rights_url, headers=passport_headers, params=passport_params)
+
+    return passport_response.json()["data"]
+
+
 def format_plate_records(passport_records):
     socrata_upload_data = []
     for record in passport_records:
@@ -42,11 +52,7 @@ def format_plate_records(passport_records):
 
 def main():
     bearer_token = get_bearer_token()
-    parking_rights_url = PASSPORT_ENFORCEMENT_ENDPOINT
-    passport_headers = {"Authorization": f"Bearer {bearer_token}"}
-    passport_params = {"operator_id": PASSPORT_OPERATOR_ID}
-    passport_reponse = requests.get(parking_rights_url, headers=passport_headers, params=passport_params)
-    passport_records = passport_reponse.json()["data"]
+    passport_records = get_license_plate_records(bearer_token)
 
     socrata_client = sodapy.Socrata(
         "datahub.austintexas.gov",
