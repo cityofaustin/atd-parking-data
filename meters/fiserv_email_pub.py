@@ -8,9 +8,11 @@ import logging
 import boto3
 import mailparser
 import pandas as pd
+import pyzipper
 
 import utils
 from io import StringIO
+from io import BytesIO
 
 # Envrioment variables
 
@@ -18,6 +20,7 @@ AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
 AWS_PASS = os.getenv("AWS_PASS")
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 FSRV_EMAIL = os.getenv("FSRV_EMAIL")
+ENCRYPTION_KEY = os.getenv("FSRV_ENCRYPTION")
 
 
 # Downloads a file from s3
@@ -75,10 +78,29 @@ def format_file_name(emailObject):
         + "/"
         + str(emailObject.date.month)
         + "/"
-        + emailObject.attachments[0]["filename"].replace(" ", "-")
+        + emailObject.attachments[0]["filename"].replace(" ", "-").replace(".zip", ".csv")
     )
 
     return file_name
+
+def decode_file_contents(email_data, fname):
+    """
+    Decodes the password protected AES256 encrypted zip file from Fiserv with the password we set.
+
+    Args:
+        email_data: Raw base64 payload from the email attachment
+        fname: the name of the CSV file to extract from the email attachment
+
+    Returns:
+        df: a pandas dataframe of the email CSV
+
+    """
+    zip_data = BytesIO(base64.b64decode(email_data))
+    with pyzipper.AESZipFile(zip_data, 'r', compression=pyzipper.ZIP_DEFLATED,
+                             encryption=pyzipper.WZ_AES) as extracted_zip:
+        with extracted_zip.open(fname, pwd=str.encode(ENCRYPTION_KEY)) as csv_file:
+            df = pd.read_csv(csv_file)
+    return df
 
 
 def df_to_s3(df, resource, filename):
@@ -133,10 +155,11 @@ def main():
 
                 # Create a file name and path for the email
                 file_name = format_file_name(emailObject)
+                attachment_name = emailObject.attachments[0]["filename"][:-3]
+                attachment_name = f"{attachment_name}csv"
 
                 # Parse attachment contents
-                csv_string_io = StringIO(emailObject.attachments[0]["payload"])
-                df = pd.read_csv(csv_string_io)
+                df = decode_file_contents(emailObject.attachments[0]["payload"], attachment_name)
 
                 # Uploading CSV to S3
                 df_to_s3(df, s3, file_name)
