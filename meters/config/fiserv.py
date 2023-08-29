@@ -6,7 +6,7 @@ REQUIRED_FIELDS = [
     "Terminal ID",
     "Batch No.",
     "Batch Sequence ID",
-    "Funded Date",
+    "Batch Date",
     "Record Date",
     "Processed Sales Amount",
     "Transaction Status",
