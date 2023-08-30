@@ -5,3 +5,4 @@ python-dotenv==0.19.*
 pypgrest==0.1.*
 sodapy==2.1.*
 mail-parser==3.15.*
+pyzipper==0.3.*

@@ -6,7 +6,7 @@ REQUIRED_FIELDS = [
     "Terminal ID",
     "Batch No.",
     "Batch Sequence ID",
-    "Funded Date",
+    "Batch Date",
     "Record Date",
     "Processed Sales Amount",
     "Transaction Status",
@@ -21,7 +21,7 @@ FIELD_MAPPING = {
     "Terminal ID": "meter_id",
     "Batch No.": "batch_number",
     "Batch Sequence ID": "batch_sequence_number",
-    "Funded Date": "submit_date",  # These look wrong, but this is indeed correct
+    "Batch Date": "submit_date",
     "Record Date": "funded_date",
     "Processed Sales Amount": "amount",
     "Transaction Status": "transaction_status",
