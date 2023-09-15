@@ -1,6 +1,5 @@
 REQUIRED_FIELDS = [
     "Invoice Number",
-    "Account #",
     "Txn Date",
     "Transaction Type",
     "Terminal ID",
@@ -15,7 +14,6 @@ REQUIRED_FIELDS = [
 
 FIELD_MAPPING = {
     "Invoice Number": "invoice_id",
-    "Account #": "match_field",
     "Txn Date": "transaction_date",
     "Transaction Type": "transaction_type",
     "Terminal ID": "meter_id",
