@@ -115,17 +115,6 @@ def aws_list_files(year, month, client):
         yield content.get("Key")
 
 
-def match_field_creation(card_num, invoice_id):
-    """
-    Returns a field for matching between Fiserv and Smartfolio
-    It is defined as a concatenation of the Credit Card number and the invoice ID
-
-    :return: String
-    """
-    card_num = card_num.replace("X", "x")
-    return card_num + "-" + str(invoice_id)
-
-
 def id_field_creation(invoice_id, batch_number, sequence_number):
     """
     Returns a field for matching between Fiserv and Smartfolio
@@ -170,11 +159,6 @@ def transform(fiserv_df):
     fiserv_df["meter_id"] = fiserv_df["meter_id"].astype("int64")
 
     # Field for matching between Fiserv and Flowbird
-
-    fiserv_df["match_field"] = fiserv_df.apply(
-        lambda x: match_field_creation(x["match_field"], x["invoice_id"]), axis=1
-    )
-
     fiserv_df["id"] = fiserv_df.apply(
         lambda x: id_field_creation(
             x["invoice_id"], x["batch_number"], x["batch_sequence_number"]

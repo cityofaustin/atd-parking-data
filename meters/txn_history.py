@@ -140,7 +140,7 @@ def remove_forbidden_keys(data, report):
     if report == "transaction_history":
         forbidden_keys = ["PLATE_NUMBER", "CARD_SERIAL_NUMBER"]
     else:
-        forbidden_keys = []
+        forbidden_keys = ["PAN_HIDDEN"]
 
     new_data = []
     for row in data:
