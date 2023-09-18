@@ -6,7 +6,6 @@ import logging
 
 # Related third-party imports
 from pypgrest import Postgrest
-from dotenv import load_dotenv
 import pandas as pd
 
 import utils
@@ -66,7 +65,7 @@ def get_fiserv(pstgrs):
 
     """
     params = {
-        "select": "id,match_field,transaction_date,flowbird_id",
+        "select": "id,invoice_id,transaction_date,flowbird_id",
         "order": "id",
         "flowbird_id": "is.null",
     }
@@ -95,7 +94,7 @@ def get_payments(pstgrs, start, end):
 
     """
     params = {
-        "select": "id,match_field,transaction_date,updated_at",
+        "select": "id,invoice_id,transaction_date,updated_at",
         "order": "id",
         "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
     }
@@ -180,18 +179,13 @@ def main(args):
     fiserv = datetime_handling(fiserv)
     payments = datetime_handling(payments)
 
-    # Removing the censored characters (x's) from our string match field
-    # AMEX transactions were having an additional x in Fiserv versus Flowbird
-    fiserv['match_field'] = fiserv['match_field'].str.replace('x', '')
-    payments['match_field'] = payments['match_field'].str.replace('x', '')
-
     # Merge the two datasets first based on the match_field column.
     # If there are multiple matches (dupes),
     # then match based on the closest transaction_date.
     output = pd.merge_asof(
         left=fiserv,
         right=payments,
-        by="match_field",
+        by="invoice_id",
         on="transaction_date",
         direction="nearest",
     )

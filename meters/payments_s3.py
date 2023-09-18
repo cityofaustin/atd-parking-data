@@ -157,16 +157,6 @@ def postgres_datetime(time_field):
     return str(output)
 
 
-def match_field_creation(card_num, invoice_id):
-    """
-    Returns a field for matching between Fiserv and Smartfolio
-    It is defined as a concatenation of the Credit Card number and the invoice ID
-    
-    :return: String
-    """
-    return card_num + "-" + str(invoice_id)
-
-
 def create_location_name(row):
     id = row["meter_id"]
     for id_range in METER_LOCATION_NAMES:
@@ -210,7 +200,6 @@ def transform(smartfolio):
     smartfolio = smartfolio.rename(
         columns={
             "MONETRA_ID": "id",
-            "PAN_HIDDEN": "match_field",
             "SCHEME": "card_type",
             "TERMINAL_ID": "meter_id",
             "TRANSACTION_AMOUNT": "amount",
@@ -231,9 +220,6 @@ def transform(smartfolio):
     # Sometimes blank processed dates are present
     smartfolio["processed_date"] = smartfolio["processed_date"].replace("NaT", None)
 
-    smartfolio["match_field"] = smartfolio.apply(
-        lambda x: match_field_creation(x["match_field"], x["invoice_id"]), axis=1
-    )
     # Get location names based on the meter ID
     smartfolio["location_name"] = smartfolio.apply(create_location_name, axis=1)
 
@@ -241,7 +227,6 @@ def transform(smartfolio):
     smartfolio = smartfolio[
         [
             "id",
-            "match_field",
             "invoice_id",
             "card_type",
             "meter_id",
