@@ -59,9 +59,10 @@ def get_email_list(s3):
     email_file_list = []
 
     my_bucket = s3.Bucket(BUCKET_NAME)
-
-    for object_summary in my_bucket.objects.filter(Prefix="emails/new"):
-        email_file_list.append(object_summary.key)
+    prefix = "emails/new/"
+    for object_summary in my_bucket.objects.filter(Prefix=prefix):
+        if object_summary.key != prefix:
+            email_file_list.append(object_summary.key)
 
     return email_file_list
 
