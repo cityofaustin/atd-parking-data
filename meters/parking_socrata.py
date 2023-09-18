@@ -117,31 +117,9 @@ def batch_upload(start, end, pstgrs, soda, table):
             paginate = False
         else:
             response = tzcleanup(response)
-            response = remove_forbidden_keys(response)
             if offset % 10000 == 0:
                 logger.debug(f"Uploading chunks: {offset} records so far")
             soda.upsert(DATASETS[table], response)
-
-
-def remove_forbidden_keys(data):
-    """Remove forbidden keys from data that are not needed in Socrata
-
-    Args:
-        data (list): A list of dictionaries, one per transactions
-
-    Returns:
-        list: A list of dictionaries, one per transaction, with forbidden keys removed
-    """
-
-    # There are different forbidden keys based on the report requested
-    forbidden_keys = ["MATCH_FIELD"]
-
-    new_data = []
-    for row in data:
-        new_row = {k: v for k, v in row.items() if k.upper() not in forbidden_keys}
-        new_data.append(new_row)
-    return new_data
-
 
 def main(args):
     ## Client objects
