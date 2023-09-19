@@ -128,6 +128,12 @@ def id_field_creation(invoice_id, batch_number, sequence_number):
     return str(batch_number) + str(invoice_id)
 
 
+def determine_submit_date_field(row):
+    if row["account"] == 885:
+        return row["Funded Date"]
+    else:
+        return row["Batch Date"]
+
 def transform(fiserv_df):
     """
     Formats and adds columns to a dataframe of Fiserv data for upload to postgres DB
@@ -146,6 +152,10 @@ def transform(fiserv_df):
 
     # Account number field is only the last three digits of the account number
     fiserv_df["account"] = fiserv_df["account"].astype(str).str[-3:].astype(int)
+
+    # Submit date depends on which account we're looking at
+    fiserv_df["submit_date"] = fiserv_df.apply(determine_submit_date_field, axis=1)
+    fiserv_df = fiserv_df.drop(["Funded Date", "Batch Date"], axis=1)
 
     # funded date is assumed to be transaction_date
     fiserv_df["funded_date"] = fiserv_df["transaction_date"]
