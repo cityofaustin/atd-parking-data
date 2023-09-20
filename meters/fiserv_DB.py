@@ -129,10 +129,15 @@ def id_field_creation(invoice_id, batch_number, sequence_number):
 
 
 def determine_submit_date_field(row):
+    """
+    Operates row-wise on a dataframe. Returns Funded Date for account 885 (PARD)
+    and Batch Date for everything else.
+    """
     if row["account"] == 885:
         return row["Funded Date"]
     else:
         return row["Batch Date"]
+
 
 def transform(fiserv_df):
     """
