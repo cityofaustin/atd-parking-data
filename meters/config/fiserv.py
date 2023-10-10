@@ -24,4 +24,5 @@ FIELD_MAPPING = {
     "Processed Sales Amount": "amount",
     "Transaction Status": "transaction_status",
     "Site ID (BE)": "account",
+    "Product Code": "card_type",
 }

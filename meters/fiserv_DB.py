@@ -10,7 +10,6 @@ from datetime import datetime
 import boto3
 import pandas as pd
 from pypgrest import Postgrest
-from dotenv import load_dotenv
 
 import utils
 
@@ -115,7 +114,7 @@ def aws_list_files(year, month, client):
         yield content.get("Key")
 
 
-def id_field_creation(invoice_id, batch_number, sequence_number):
+def id_field_creation(invoice_id, batch_number):
     """
     Returns a field for matching between Fiserv and Smartfolio
     It is defined as a concatenation of the Credit Card number and the invoice ID
@@ -150,7 +149,11 @@ def transform(fiserv_df):
             fiserv_df.columns
         ), "Incorrect report supplied. Check required fields."
 
-    fiserv_df = fiserv_df[REQUIRED_FIELDS]
+    if "Product Code" in fiserv_df.columns:
+        fields = REQUIRED_FIELDS + ["Product Code"]
+    else:
+        fields = REQUIRED_FIELDS
+    fiserv_df = fiserv_df[fields]
 
     # Renaming columns to match schema
     fiserv_df = fiserv_df.rename(columns=FIELD_MAPPING)
@@ -176,7 +179,7 @@ def transform(fiserv_df):
     # Field for matching between Fiserv and Flowbird
     fiserv_df["id"] = fiserv_df.apply(
         lambda x: id_field_creation(
-            x["invoice_id"], x["batch_number"], x["batch_sequence_number"]
+            x["invoice_id"], x["batch_number"]
         ),
         axis=1,
     )

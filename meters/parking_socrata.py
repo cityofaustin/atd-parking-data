@@ -7,7 +7,6 @@ import logging
 # Related third-party imports
 from sodapy import Socrata
 from pypgrest import Postgrest
-from dotenv import load_dotenv
 
 import utils
 
