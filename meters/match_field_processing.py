@@ -68,6 +68,8 @@ def get_fiserv(pstgrs):
         "select": "id,invoice_id,transaction_date,flowbird_id",
         "order": "id",
         "flowbird_id": "is.null",
+        "transaction_date": "not.is.null",
+        "invoice_id": "not.is.null",
     }
 
     fiserv = pstgrs.select(resource="fiserv_reports_raw", params=params)
