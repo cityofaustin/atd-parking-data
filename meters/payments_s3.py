@@ -8,7 +8,6 @@ from datetime import datetime
 from pypgrest import Postgrest
 import pandas as pd
 import boto3
-from dotenv import load_dotenv
 
 import utils
 from config.location_names import METER_LOCATION_NAMES
