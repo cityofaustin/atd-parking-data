@@ -132,8 +132,8 @@ def determine_submit_date_field(row):
     Operates row-wise on a dataframe. Returns Funded Date for account 885 (PARD)
     and Batch Date for everything else.
     """
-    if row["account"] == 885:
-        return row["Funded Date"]
+    if row["account"] == 885 and row["card_type"] != "AMEX":
+        return row["funded_date"]
     else:
         return row["Batch Date"]
 
@@ -163,10 +163,7 @@ def transform(fiserv_df):
 
     # Submit date depends on which account we're looking at
     fiserv_df["submit_date"] = fiserv_df.apply(determine_submit_date_field, axis=1)
-    fiserv_df = fiserv_df.drop(["Funded Date", "Batch Date"], axis=1)
-
-    # funded date is assumed to be transaction_date
-    fiserv_df["funded_date"] = fiserv_df["transaction_date"]
+    fiserv_df = fiserv_df.drop(["Batch Date"], axis=1)
 
     # formatting before upsert
     fiserv_df["invoice_id"] = fiserv_df["invoice_id"].astype("int64")
