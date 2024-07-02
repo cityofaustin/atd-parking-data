@@ -65,4 +65,7 @@ APP_LOCATION_NAMES = {
     range(39903, 39905 + 1): "Colorado River",
     range(39902, 39902 + 1): "Austin High",
     range(39007, 39007 + 1): "Austin High",
+    range(40001, 40022 + 1): "South Congress",
+    range(40030, 40038 + 1): "South Congress",
+    range(40101, 40117 + 1): "South Congress",
 }
