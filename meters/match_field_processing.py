@@ -66,7 +66,7 @@ def get_fiserv(pstgrs):
     """
     params = {
         "select": "id,invoice_id,transaction_date,flowbird_id",
-        "order": "id",
+        "order": "id.desc",
         "flowbird_id": "is.null",
         "transaction_date": "not.is.null",
         "invoice_id": "not.is.null",
@@ -97,7 +97,7 @@ def get_payments(pstgrs, start, end):
     """
     params = {
         "select": "id,invoice_id,transaction_date,updated_at",
-        "order": "id",
+        "order": "id.desc",
         "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
     }
     payments = pstgrs.select(resource="flowbird_payments_raw", params=params)

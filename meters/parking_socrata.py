@@ -102,15 +102,16 @@ def batch_upload(start, end, pstgrs, soda, table):
     logger.debug(f"Publishing table: {table} to Socrata from {start} to {end}")
     paginate = True
     offset = 0
+    chunk_size = 1000
     while paginate:
         params = {
             "select": "*",
             "and": f"(updated_at.lte.{end},updated_at.gte.{start})",
-            "order": "id",
-            "limit": 1000,
+            "order": "id.desc",
+            "limit": chunk_size,
             "offset": offset,
         }
-        offset += 1000
+        offset += chunk_size
         response = pstgrs.select(resource=table, params=params, pagination=True)
         if len(response) == 0:
             paginate = False
@@ -126,7 +127,6 @@ def main(args):
     pstgrs = Postgrest(
         POSTGREST_ENDPOINT,
         token=POSTGREST_TOKEN,
-        headers={"Prefer": "return=representation"},
     )
     # sodapy
     soda = Socrata(SO_WEB, SO_TOKEN, username=SO_USER, password=SO_PASS, timeout=500,)
