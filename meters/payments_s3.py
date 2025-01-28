@@ -11,7 +11,8 @@ import boto3
 
 import utils
 from config.location_names import METER_LOCATION_NAMES
-# Envrioment variables
+
+# Environment variables
 
 AWS_ACCESS_ID = os.getenv("AWS_ACCESS_ID")
 AWS_PASS = os.getenv("AWS_PASS")
@@ -107,7 +108,8 @@ def aws_list_files(year, month, client, user):
         subdir = f"{subdir}-PARD"
 
     response = client.list_objects(
-        Bucket=BUCKET_NAME, Prefix=f"meters/prod/{subdir}/{str(year)}/{str(month)}",
+        Bucket=BUCKET_NAME,
+        Prefix=f"meters/prod/{subdir}/{str(year)}/{str(month)}",
     )
 
     for content in response.get("Contents", []):
@@ -115,7 +117,7 @@ def aws_list_files(year, month, client, user):
 
 
 def get_invoice_id(banking_id, terminal_code):
-    """Create the Inovice ID which is a concatention of the banking ID and device ID
+    """Create the Inovice ID which is a concatenation of the banking ID and device ID
 
     Args:
         banking_id (int): whatever this is
@@ -142,13 +144,13 @@ def get_invoice_id(banking_id, terminal_code):
 def postgres_datetime(time_field):
     """Changes the existing datetime field in S3 to a format that can be stored by postgres.
         First parses the string time as datetime type then outputs as string.
-    
+
     Args:
-        time_field (string): Datetime field used by smartfolio. 
+        time_field (string): Datetime field used by smartfolio.
         Sent in a lambda function from a pandas series.
-    
+
     Returns:
-        output (string): Formatted datetime field that is compatable with postgres
+        output (string): Formatted datetime field that is compatible with postgres
     """
     output = pd.to_datetime(
         time_field, format="%Y-%m-%d %H:%M:%S", infer_datetime_format=True
@@ -163,13 +165,14 @@ def create_location_name(row):
             return METER_LOCATION_NAMES[id_range]
     return "Unknown Location"
 
+
 def transform(smartfolio):
-    """Formats and adds/drops columns of a dataframe from smartfolio to conform 
+    """Formats and adds/drops columns of a dataframe from smartfolio to conform
         to postgres DB schema.
-    
+
     Args:
         smartfolio (pandas dataframe): The unformatted data stored in S3 from smartfolio.
-    
+
     Returns:
         smartfolio (pandas dataframe): Formatted dataframe that works with DB schema.
     """
@@ -207,10 +210,6 @@ def transform(smartfolio):
         }
     )
 
-    # Drops "INCOMPLETE"/"UNSUCCESSFUL" transactions which we don't need.
-    smartfolio = smartfolio.dropna(subset=["id"])
-    smartfolio = smartfolio[smartfolio["transaction_status"] == "COMPLETED"]
-
     # Data types to match schema
     smartfolio["invoice_id"] = smartfolio["invoice_id"].astype(int)
     smartfolio["meter_id"] = smartfolio["meter_id"].astype(int)
@@ -246,10 +245,10 @@ def to_postgres(smartfolio):
     """Uploads the formatted dataframe to two different postgres DBs.
         flowbird_transactions_raw - just for smartfolio aka flowbird data
         transactions - a combined parking DB which will also include data from passport
-    
+
     Args:
         smartfolio (pandas dataframe): Formatted dataframe that works with DB schema.
-    
+
     Returns:
         None
     """
@@ -269,9 +268,10 @@ def to_postgres(smartfolio):
 
 
 def main(args):
-
     aws_s3_client = boto3.client(
-        "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
+        "s3",
+        aws_access_key_id=AWS_ACCESS_ID,
+        aws_secret_access_key=AWS_PASS,
     )
 
     csv_file_list = handle_year_month_args(
@@ -283,19 +283,31 @@ def main(args):
         df = pd.read_csv(response.get("Body"))
         logger.debug(f"Loaded CSV File: {csv_f}")
 
-        df = transform(df)
-        to_postgres(df)
+        # Remove "INCOMPLETE"/"UNSUCCESSFUL" transactions which we don't need.
+        df = df.dropna(subset=["MONETRA_ID"])
+        df = df[df["TRANSACTION_STATUS"] == "COMPLETED"]
+
+        if not df.empty:
+            df = transform(df)
+            to_postgres(df)
+        else:
+            # Rare case where every transaction on our CSV was not valid
+            logger.debug(f"No completed transactions found for: {csv_f}")
 
 
 # CLI arguments definition
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--year", type=int, help=f"Year of folder to select, defaults to current year",
+    "--year",
+    type=int,
+    help=f"Year of folder to select, defaults to current year",
 )
 
 parser.add_argument(
-    "--month", type=int, help=f"Month of folder to select. defaults to current month",
+    "--month",
+    type=int,
+    help=f"Month of folder to select. defaults to current month",
 )
 
 parser.add_argument(
