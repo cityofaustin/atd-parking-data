@@ -299,9 +299,15 @@ def main(args):
         "s3", aws_access_key_id=AWS_ACCESS_ID, aws_secret_access_key=AWS_PASS,
     )
 
-    csv_file_list = handle_year_month_args(
-        args.year, args.month, args.lastmonth, aws_s3_client
-    )
+    # handling arguments
+    if args.files:
+        # manual input of files
+        logger.debug(f"Using manual input list of files: {len(args.files)} files to process.")
+        csv_file_list = args.files
+    else:
+        csv_file_list = handle_year_month_args(
+            args.year, args.month, args.lastmonth, aws_s3_client
+        )
 
     # Go through all files and combine into a dataframe
     for csv_f in csv_file_list:
@@ -332,6 +338,13 @@ parser.add_argument(
     type=bool,
     help=f"Will download from current month folder as well as previous.",
     default=False,
+)
+
+parser.add_argument(
+    "--files",
+    nargs="*",  # Accepts zero or more arguments
+    type=str,
+    help="A space-separated list of files locations in S3 to upload (optional)"
 )
 
 args = parser.parse_args()
