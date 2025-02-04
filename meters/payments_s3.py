@@ -274,9 +274,16 @@ def main(args):
         aws_secret_access_key=AWS_PASS,
     )
 
-    csv_file_list = handle_year_month_args(
-        args.year, args.month, args.lastmonth, aws_s3_client, args.user
-    )
+    # handling arguments
+    if args.files:
+        # manual input of files
+        logger.debug(f"Using manual input list of files: {len(args.files)} files to process.")
+        csv_file_list = args.files
+    else:
+        csv_file_list = handle_year_month_args(
+            args.year, args.month, args.lastmonth, aws_s3_client, args.user
+        )
+
     for csv_f in csv_file_list:
         # Parse the file
         response = aws_s3_client.get_object(Bucket=BUCKET_NAME, Key=csv_f)
@@ -322,6 +329,13 @@ parser.add_argument(
     default="atd",
     choices=["pard", "atd"],
     help=f"The user account to use to access data [atd (parking meters), pard (pool passes)]",
+)
+
+parser.add_argument(
+    "--files",
+    nargs="*",  # Accepts zero or more arguments
+    type=str,
+    help="A space-separated list of file locations in S3 to upload (optional)"
 )
 
 args = parser.parse_args()
