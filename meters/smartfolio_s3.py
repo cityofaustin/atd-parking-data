@@ -344,7 +344,7 @@ parser.add_argument(
     "--files",
     nargs="*",  # Accepts zero or more arguments
     type=str,
-    help="A space-separated list of files locations in S3 to upload (optional)"
+    help="A space-separated list of file locations in S3 to upload (optional)"
 )
 
 args = parser.parse_args()
