@@ -99,12 +99,18 @@ def decode_file_contents(email_data, fname):
         df: a pandas dataframe of the email CSV
 
     """
-    zip_data = BytesIO(base64.b64decode(email_data))
-    with pyzipper.AESZipFile(
-        zip_data, "r", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES
-    ) as extracted_zip:
-        with extracted_zip.open(fname, pwd=str.encode(ENCRYPTION_KEY)) as csv_file:
-            df = pd.read_csv(csv_file)
+    if fname[-4:] == ".zip":
+        zip_data = BytesIO(base64.b64decode(email_data))
+        with pyzipper.AESZipFile(
+            zip_data, "r", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES
+        ) as extracted_zip:
+            with extracted_zip.open(fname, pwd=str.encode(ENCRYPTION_KEY)) as csv_file:
+                df = pd.read_csv(csv_file)
+    elif fname[-4:] == ".csv":
+        csv_buffer = StringIO(email_data)
+        df = pd.read_csv(csv_buffer)
+    else:
+        raise ValueError("File type not supported")
     return df
 
 
