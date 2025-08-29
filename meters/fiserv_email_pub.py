@@ -87,7 +87,7 @@ def format_file_name(emailObject):
     return file_name
 
 
-def decode_file_contents(email_data, fname):
+def decode_file_contents(email_data, fname, content_type):
     """
     Decodes the password protected AES256 encrypted zip file from Fiserv with the password we set.
 
@@ -99,14 +99,14 @@ def decode_file_contents(email_data, fname):
         df: a pandas dataframe of the email CSV
 
     """
-    if fname[-4:] == ".zip":
+    if content_type == "application/zip":
         zip_data = BytesIO(base64.b64decode(email_data))
         with pyzipper.AESZipFile(
             zip_data, "r", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES
         ) as extracted_zip:
             with extracted_zip.open(fname, pwd=str.encode(ENCRYPTION_KEY)) as csv_file:
                 df = pd.read_csv(csv_file)
-    elif fname[-4:] == ".csv":
+    elif content_type == "text/csv":
         csv_buffer = StringIO(email_data)
         df = pd.read_csv(csv_buffer)
     else:
@@ -167,11 +167,12 @@ def main():
                 # Create a file name and path for the email
                 file_name = format_file_name(emailObject)
                 attachment_name = emailObject.attachments[0]["filename"][:-3]
+                content_type = emailObject.attachments[0]["mail_content_type"]
                 attachment_name = f"{attachment_name}csv"
 
                 # Parse attachment contents
                 df = decode_file_contents(
-                    emailObject.attachments[0]["payload"], attachment_name
+                    emailObject.attachments[0]["payload"], attachment_name, content_type
                 )
 
                 # Uploading CSV to S3
